@@ -1,4 +1,4 @@
-class ChatSession {
+export class ChatSession {
     id: number;
     userChatbotId: number;
     tenantId: number;
