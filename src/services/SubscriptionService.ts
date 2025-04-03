@@ -1,23 +1,23 @@
-import { SubscriptionPlan } from '../models/SubscriptionPlan';
+import { Subscription } from '../models/Subscription';
 
-export class SubscriptionPlanService {
-  async getAllPlans() {
-    return await SubscriptionPlan.findAll();
+export class SubscriptionService {
+  async getAllSubscriptions() {
+    return await Subscription.findAll();
   }
 
-  async getPlanById(id: number) {
-    return await SubscriptionPlan.findByPk(id);
+  async getSubscriptionById(id: number) {
+    return await Subscription.findByPk(id);
   }
 
-  async createPlan(planData: any) {
-    return await SubscriptionPlan.create(planData);
+  async createSubscription(subscriptionData: any) {
+    return await Subscription.create(subscriptionData);
   }
 
-  async updatePlan(id: number, planData: any) {
-    return await SubscriptionPlan.update(planData, { where: { id } });
+  async updateSubscription(id: number, subscriptionData: any) {
+    return await Subscription.update(subscriptionData, { where: { id } });
   }
 
-  async deletePlan(id: number) {
-    return await SubscriptionPlan.destroy({ where: { id } });
+  async deleteSubscription(id: number) {
+    return await Subscription.destroy({ where: { id } });
   }
 }
