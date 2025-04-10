@@ -37,7 +37,7 @@ export const createFeedback = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid input' });
     }
 
-    const feedback = await feedbackService.createChatSession(
+    const feedback = await feedbackService.createFeedback(
       chatSessionId,
       rating,
       content,
