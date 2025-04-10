@@ -6,7 +6,7 @@ const messageService = new MessageService();
 export const getMessages = async (req: Request, res: Response) => {
   try {
     const messages = await messageService.getAllMessages();
-    res.json(messageService);
+    res.json(messages);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch messages', error });
   }
