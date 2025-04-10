@@ -1,11 +1,11 @@
 // Cai nay thi t nghi nen tao file db roi import
 import db from '../db';
-import { Message } from '../models/Message;
+import { Message } from '../models/Message';
 
 export const createMessage = async (
   chatSessionId: number,
   sender: string,
-    content: string,
+  content: string,
 ): Promise<Message> => {
   const connection = await db.getConnection();
   try {
@@ -63,8 +63,8 @@ export const getMessageById = async (id: number): Promise<Message | null> => {
       ? {
           id: row.id,
           chatSessionId: row.chat_session_id,
-            sender: row.sender,
-            content: row.content,
+          sender: row.sender,
+          content: row.content,
           createdAt: new Date(row.created_at),
         }
       : null;
