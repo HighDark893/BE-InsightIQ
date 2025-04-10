@@ -5,22 +5,19 @@ enum Sender {
 
 export default class Message {
   id: number;
-  userChatbotId: number;
-  tenantId: number;
+  chatSessionId: number;
   content: string;
   sender: Sender;
   createAt: Date;
 
   constructor(
     id: number,
-    userChatbotId: number,
-    tenantId: number,
+    chatSessionId: number,
     content: string,
     sender: Sender,
   ) {
     this.id = id;
-    this.userChatbotId = userChatbotId;
-    this.tenantId = tenantId;
+    this.chatSessionId = chatSessionId;
     this.content = content;
     this.sender = sender;
     this.createAt = new Date();
