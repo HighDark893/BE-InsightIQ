@@ -6,7 +6,7 @@ const router = Router();
 const proxyService = new ProxyService();
 const logger = Logger.getInstance();
 
-router.post('/', async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
     return await proxyService.proxyRequest(req.body);
 });
 

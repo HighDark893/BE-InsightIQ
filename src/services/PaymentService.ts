@@ -1,4 +1,4 @@
-import Payment from "../models/Payment";
+import Payment from "../dto/Payment";
 
 export class PaymentService {
   static async getAllPayments() {

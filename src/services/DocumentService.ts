@@ -1,4 +1,4 @@
-import Document from "../models/Document";
+import Document from "../dto/Document";
 
 export class DocumentService {
   static async getAllDocuments() {
