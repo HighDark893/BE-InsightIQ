@@ -1,4 +1,4 @@
-import Subscription from "../models/Subscription";
+import Subscription from "../dto/Subscription";
 
 export class SubscriptionService {
   async getAllSubscriptions() {

@@ -1,6 +1,6 @@
 // Cai nay thi t nghi nen tao file db roi import
 import db from '../db';
-import { Message } from '../models/Message';
+import { Message } from '../dto/Message';
 
 export const createMessage = async (
   chatSessionId: number,

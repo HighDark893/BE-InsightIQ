@@ -1,6 +1,6 @@
 // Cai nay thi t nghi nen tao file db roi import
 import db from '../db';
-import { Feedback } from '../models/Feedback';
+import { Feedback } from '../dto/Feedback';
 
 export const createFeedback = async (
   chatSessionId: number,
