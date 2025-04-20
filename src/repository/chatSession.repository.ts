@@ -11,4 +11,34 @@ export class ChatSessionRepository {
       await this.chatSessionRepository.save(chatSession),
     );
   }
+
+  public async findAll(): Promise<ChatSessionDto[]> {
+    const chatSessionEntities = await this.chatSessionRepository.find();
+    const chatSessionDtos: ChatSessionDto[] = [];
+
+    chatSessionEntities.forEach((cs) => {
+      const chatSessionDto = new ChatSessionDto();
+
+      chatSessionDto.id = cs.id;
+      chatSessionDto.userChatbotId = cs.userChatbotId;
+      chatSessionDto.tenantId = cs.tenantId;
+      chatSessionDto.sessionToken = cs.sessionToken;
+
+      chatSessionDtos.push(chatSessionDto);
+    });
+
+    return chatSessionDtos;
+  }
+
+  public async findById(id: number): Promise<ChatSessionDto | null> {
+    const foundChatSessionEntity = await this.chatSessionRepository.findOne({
+      where: { id: id },
+    });
+
+    if (!foundChatSessionEntity) {
+      return null;
+    }
+
+    return ChatSessionDto.fromEntity(foundChatSessionEntity);
+  }
 }

@@ -17,16 +17,27 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-export default router;
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const chatSessions = await chatSessionService.getAll();
+    res.status(200).json(chatSessions);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch chat sessions', error });
+  }
+});
 
-// export const getChatSessions = async (req: Request, res: Response) => {
-//   try {
-//     const chatSessions = await chatSessionService.getAllChatSessions();
-//     res.json(chatSessionService);
-//   } catch (error) {
-//     res.status(500).json({ message: 'Failed to fetch chat sessions', error });
-//   }
-// };
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const chatSession = await chatSessionService.getById(id);
+
+    res.status(200).json(chatSession);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch chat session', error });
+  }
+});
+
+export default router;
 
 // export const getChatSession = async (req: Request, res: Response) => {
 //   try {

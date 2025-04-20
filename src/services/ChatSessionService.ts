@@ -18,4 +18,12 @@ export class ChatSessionService {
 
     return this.chatSessionRepository.save(chatSession);
   }
+
+  public async getAll(): Promise<ChatSessionDto[]> {
+    return this.chatSessionRepository.findAll();
+  }
+
+  public async getById(id: number): Promise<ChatSessionDto | null> {
+    return this.chatSessionRepository.findById(id);
+  }
 }
