@@ -1,32 +1,23 @@
-import { Request, Response } from 'express';
+import { Request, Response, Router } from 'express';
 import { ChatSessionService } from '../services/ChatSessionService';
+import { CreateChatSessionDto } from '../dto/createChatSession.dto';
 
-export class ChatSessionController {
-  private readonly chatSessionService = new ChatSessionService();
+const router = Router();
+const chatSessionService = new ChatSessionService();
 
-  public async createChatSession(req: Request, res: Response) {
-    try {
-      const { userChatbotId, tenantId, sessionToken } = req.body;
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const createChatSessionDto: CreateChatSessionDto = req.body;
 
-      if (
-        typeof userChatbotId !== 'number' ||
-        typeof tenantId !== 'number' ||
-        typeof sessionToken !== 'string'
-      ) {
-        return res.status(400).json({ message: 'Invalid input' });
-      }
-
-      const chatSession = await this.chatSessionService.create(
-        userChatbotId,
-        tenantId,
-        sessionToken,
-      );
-      res.status(201).json(chatSession);
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to create chat session', error });
-    }
+    const chatSessionDto =
+      await chatSessionService.create(createChatSessionDto);
+    res.status(201).json(chatSessionDto);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to create chat session', error });
   }
-}
+});
+
+export default router;
 
 // export const getChatSessions = async (req: Request, res: Response) => {
 //   try {
