@@ -10,6 +10,7 @@ export class ChatSessionDto {
     const chatSessionDto = new ChatSessionDto();
     chatSessionDto.id = entity.id;
     chatSessionDto.userChatbotId = entity.userChatbotId;
+    chatSessionDto.tenantId = entity.tenantId;
     chatSessionDto.sessionToken = entity.sessionToken;
     return chatSessionDto;
   }
