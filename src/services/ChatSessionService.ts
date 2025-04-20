@@ -1,4 +1,5 @@
 import { ChatSessionDto } from '../dto/chatSession.dto';
+import { CreateChatSessionDto } from '../dto/createChatSession.dto';
 import { ChatSessionEntity } from '../entity/chatSession.entity';
 import { ChatSessionRepository } from '../repository/chatSession.repository';
 
@@ -8,14 +9,12 @@ export class ChatSessionService {
   constructor() {}
 
   public async create(
-    userChatbotId: number,
-    tenantId: number,
-    sessionToken: string,
+    createChatSessionDto: CreateChatSessionDto,
   ): Promise<ChatSessionDto> {
     const chatSession = new ChatSessionEntity();
-    chatSession.userChatbotId = userChatbotId;
-    chatSession.tenantId = tenantId;
-    chatSession.sessionToken = sessionToken;
+    chatSession.userChatbotId = createChatSessionDto.userChatbotId;
+    chatSession.tenantId = createChatSessionDto.tenantId;
+    chatSession.sessionToken = createChatSessionDto.sessionToken;
 
     return this.chatSessionRepository.save(chatSession);
   }
