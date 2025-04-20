@@ -41,8 +41,11 @@ router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const success = await chatSessionService.delete(id);
-
-    res.status(204).send();
+    if (!success) {
+      res.status(404).json({ message: "Chat session doesn't exist." });
+    } else {
+      res.status(204).send();
+    }
   } catch (error) {
     res.status(500).json({ message: 'Failed to delete chat session', error });
   }
