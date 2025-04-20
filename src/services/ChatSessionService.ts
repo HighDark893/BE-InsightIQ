@@ -20,10 +20,33 @@ export class ChatSessionService {
   }
 
   public async getAll(): Promise<ChatSessionDto[]> {
-    return this.chatSessionRepository.findAll();
+    const chatSessionEntities = await this.chatSessionRepository.findAll();
+    const chatSessionDtos: ChatSessionDto[] = [];
+
+    chatSessionEntities.forEach((cs) => {
+      chatSessionDtos.push(ChatSessionDto.fromEntity(cs));
+    });
+
+    return chatSessionDtos;
   }
 
   public async getById(id: number): Promise<ChatSessionDto | null> {
-    return this.chatSessionRepository.findById(id);
+    const chatSessionEntity = await this.chatSessionRepository.findById(id);
+
+    if (!chatSessionEntity) {
+      return null;
+    }
+    return ChatSessionDto.fromEntity(chatSessionEntity);
+  }
+
+  public async delete(id: number): Promise<Boolean> {
+    const chatSessionEntity = await this.chatSessionRepository.findById(id);
+
+    if (!chatSessionEntity) {
+      return false;
+    }
+
+    this.chatSessionRepository.remove(chatSessionEntity);
+    return true;
   }
 }

@@ -12,33 +12,17 @@ export class ChatSessionRepository {
     );
   }
 
-  public async findAll(): Promise<ChatSessionDto[]> {
-    const chatSessionEntities = await this.chatSessionRepository.find();
-    const chatSessionDtos: ChatSessionDto[] = [];
-
-    chatSessionEntities.forEach((cs) => {
-      const chatSessionDto = new ChatSessionDto();
-
-      chatSessionDto.id = cs.id;
-      chatSessionDto.userChatbotId = cs.userChatbotId;
-      chatSessionDto.tenantId = cs.tenantId;
-      chatSessionDto.sessionToken = cs.sessionToken;
-
-      chatSessionDtos.push(chatSessionDto);
-    });
-
-    return chatSessionDtos;
+  public async findAll(): Promise<ChatSessionEntity[]> {
+    return await this.chatSessionRepository.find();
   }
 
-  public async findById(id: number): Promise<ChatSessionDto | null> {
-    const foundChatSessionEntity = await this.chatSessionRepository.findOne({
+  public async findById(id: number): Promise<ChatSessionEntity | null> {
+    return await this.chatSessionRepository.findOne({
       where: { id: id },
     });
+  }
 
-    if (!foundChatSessionEntity) {
-      return null;
-    }
-
-    return ChatSessionDto.fromEntity(foundChatSessionEntity);
+  public async remove(entity: ChatSessionEntity): Promise<ChatSessionEntity> {
+    return await this.chatSessionRepository.remove(entity);
   }
 }
