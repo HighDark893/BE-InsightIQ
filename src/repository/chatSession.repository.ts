@@ -41,4 +41,16 @@ export class ChatSessionRepository {
 
     return ChatSessionDto.fromEntity(foundChatSessionEntity);
   }
+
+  public async remove(id: number): Promise<Boolean> {
+    const foundChatSessionEntity = await this.chatSessionRepository.findOne({
+      where: { id: id },
+    });
+
+    if (!foundChatSessionEntity) {
+      return false;
+    }
+
+    return true;
+  }
 }
