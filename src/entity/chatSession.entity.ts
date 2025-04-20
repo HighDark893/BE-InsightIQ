@@ -17,7 +17,7 @@ export class ChatSessionEntity extends BaseEntity {
   id: number;
 
   @Column({
-    name: 'user_chatbor_id',
+    name: 'user_chatbot_id',
   })
   userChatbotId: number;
 
