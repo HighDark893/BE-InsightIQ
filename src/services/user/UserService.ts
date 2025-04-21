@@ -2,6 +2,7 @@ import axios from 'axios';
 import { UserRepository } from '../../repository/user.repository';
 import { Logger } from '../../utils/Logger';
 import { UserEntity } from '../../entity/user.entity';
+import { UserDto } from '../../dto/user.dto';
 
 
 export class UserService {
@@ -13,14 +14,12 @@ export class UserService {
 
   }
 
-  public async createUserRequest(body: any): Promise<any> {
+  async createUserRequest(userDto: UserDto){
 
-    const user = new UserEntity();
-    user.email = "dangngu01@gmail.com";
-    user.phoneNumber = "123456789";
-    user.passwordHash = "concacgicungduocc"
-    const users = await this.userRepository.save(user);
-
-    return user.email;
+    const userEntity = new UserEntity();
+    userEntity.email = userDto.email;
+    userEntity.phoneNumber = userDto.phoneNumber;
+    userEntity.passwordHash = userDto.passwordHash;
+    await this.userRepository.createUser(userEntity);
   }
 }
