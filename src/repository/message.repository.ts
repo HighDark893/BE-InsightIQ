@@ -2,7 +2,7 @@ import { myDataSource } from '../config/database.config';
 import { MessageDto } from '../dto/message.dto';
 import { MessageEntity } from '../entity/message.entity';
 
-export class MesageRepository {
+export class MessageRepository {
   private readonly messageRepository =
     myDataSource.getRepository(MessageEntity);
 
