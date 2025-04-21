@@ -25,6 +25,9 @@ export class MessageRepository {
   ): Promise<MessageEntity[]> {
     return await this.messageRepository.find({
       where: { chatSessionId: chatSessionId },
+      order: {
+        createdAt: 'ASC',
+      },
     });
   }
 
