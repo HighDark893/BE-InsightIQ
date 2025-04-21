@@ -1,87 +1,57 @@
-// Cai nay thi t nghi nen tao file db roi import
-import db from '../db';
-import { Message } from '../dto/Message';
+import { MessageDto } from '../dto/message.dto';
+import { CreateMessageDto } from '../dto/createMessage.dto';
+import { MessageEntity } from '../entity/message.entity';
+import { MessageRepository } from '../repository/message.repository';
+import { Sender } from '../constants/SenderEnum';
 
-export const createMessage = async (
-  chatSessionId: number,
-  sender: string,
-  content: string,
-): Promise<Message> => {
-  const connection = await db.getConnection();
-  try {
-    const [result]: any = await connection.execute(
-      'INSERT INTO message (chat_session_id, sender, content) VALUES (?, ?, ?)',
-      [chatSessionId, sender, content],
-    );
+export class MessageService {
+  private readonly messageRepository = new MessageRepository();
 
-    const [rows] = await connection.execute(
-      'SELECT id, chat_session_id, sender, content, created_at FROM message WHERE id = ?',
-      [result.insertId],
-    );
-    const row = (rows as any[])[0];
+  constructor() {}
 
-    return {
-      id: row.id,
-      chatSessionId: row.chat_session_id,
-      sender: row.sender,
-      content: row.content,
-      createdAt: new Date(row.created_at),
-    };
-  } finally {
-    connection.release();
+  public async create(createMessageDto: CreateMessageDto): Promise<MessageDto> {
+    const message = new MessageEntity();
+
+    message.sender = createMessageDto.sender;
+    message.content = createMessageDto.content;
+    message.chatSessionId = createMessageDto.chatSessionId;
+
+    return await this.messageRepository.save(message);
   }
-};
 
-export const getMessages = async (): Promise<Message[]> => {
-  const connection = await db.getConnection();
-  try {
-    const [rows] = await connection.execute(
-      'SELECT id, chat_session_id, sender, content, created_at FROM message ORDER BY created_at DESC',
-    );
+  public async getAll(): Promise<MessageDto[]> {
+    const messageEntities = await this.messageRepository.findAll();
+    const messageDtos: MessageDto[] = [];
 
-    return (rows as any[]).map((row) => ({
-      id: row.id,
-      chatSessionId: row.chat_session_id,
-      sender: row.sender,
-      content: row.content,
-      createdAt: new Date(row.created_at),
-    }));
-  } finally {
-    connection.release();
+    messageEntities.forEach((m) => {
+      messageDtos.push(MessageDto.fromEntity(m));
+    });
+
+    return messageDtos;
   }
-};
 
-export const getMessageById = async (id: number): Promise<Message | null> => {
-  const connection = db.getConnection();
-  try {
-    const [rows] = await connection.execute(
-      'SELECT id, chat_session_id, sender, content, created_at FROM message WHERE id = ?',
-      [id],
-    );
-    const row = (rows as any[])[0];
-    return row
-      ? {
-          id: row.id,
-          chatSessionId: row.chat_session_id,
-          sender: row.sender,
-          content: row.content,
-          createdAt: new Date(row.created_at),
-        }
-      : null;
-  } finally {
-    connection.release();
-  }
-};
+  public async getById(id: number): Promise<MessageDto | null> {
+    const messageEntity = await this.messageRepository.findById(id);
 
-export const deleteMessage = async (id: number): Promise<boolean> => {
-  const connection = await db.getConnection();
-  try {
-    const [result]: any = await connection.execute(
-      'DELETE FROM message WHERE id = ?',
-      [id],
-    );
-    return result.affectedRows > 0;
-  } finally {
-    connection.release();
+    if (!messageEntity) {
+      return null;
+    }
+    return MessageDto.fromEntity(messageEntity);
   }
-};
+
+  public async getByChatSessionId(
+    chatSessionId: number,
+  ): Promise<MessageDto[]> {
+    return await this.messageRepository.findByChatSessionId(chatSessionId);
+  }
+
+  public async delete(id: number): Promise<Boolean> {
+    const messageEntity = await this.messageRepository.findById(id);
+
+    if (!messageEntity) {
+      return false;
+    }
+    this.messageRepository.remove(messageEntity);
+    return true;
+  }
+}
