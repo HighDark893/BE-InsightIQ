@@ -35,6 +35,13 @@ export class MessageEntity extends BaseEntity {
   })
   chatSessionId: number;
 
+  @Column({
+    name: 'created_at',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  createdAt: Date;
+
   @ManyToOne(() => ChatSessionEntity, (chatSession) => chatSession.messages)
   @JoinColumn({
     name: 'chat_session_id',

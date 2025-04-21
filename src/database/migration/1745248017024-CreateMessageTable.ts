@@ -8,6 +8,7 @@ export class CreateMessageTable1745248017024 implements MigrationInterface {
                 sender ENUM('Chatbot', 'User') NOT NULL,
                 content TEXT NOT NULL,
                 chat_session_id BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY(id),
                 CONSTRAINT fk_chat_session_id FOREIGN KEY (chat_session_id) REFERENCES chat_session(id)
             )    
