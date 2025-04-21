@@ -5,7 +5,9 @@ import {
   PrimaryGeneratedColumn,
   OneToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
+import { MessageEntity } from './message.entity';
 
 @Entity({
   name: 'chat_session',
@@ -30,4 +32,7 @@ export class ChatSessionEntity extends BaseEntity {
     name: 'session_token',
   })
   sessionToken: string;
+
+  @OneToMany(() => MessageEntity, (message) => message.chatSession)
+  messages: MessageEntity[];
 }
