@@ -1,4 +1,7 @@
-import SubscriptionPlan from "../dto/SubscriptionPlan";
+import SubscriptionPlan from "../dto/Subscri" +
+  "" +
+"" +
+"ptionPlan";
 
 export class SubscriptionPlanService {
   async getAllPlans() {

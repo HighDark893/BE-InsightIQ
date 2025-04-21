@@ -3,6 +3,7 @@ import bodyParser from 'body-parser';
 import proxyController from "./controller/ProxyController";
 import { LoggerMiddleware } from './middleware/LoggingMiddleware';
 import { myDataSource } from './config/database.config';
+import userController from './controller/user/UserController';
 
 myDataSource
   .initialize()
@@ -19,5 +20,6 @@ app.use(bodyParser.json());
 app.use(LoggerMiddleware.logRequest)
 app.use(LoggerMiddleware.logResponseTime)
 app.use('/proxy', proxyController);
+app.use('/user', userController);
 
 export default app;
