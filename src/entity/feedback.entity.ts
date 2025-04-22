@@ -45,7 +45,7 @@ export class FeedbackEntity extends BaseEntity {
 
   @OneToOne(() => MessageEntity)
   @JoinColumn({
-    name: 'messageId',
+    name: 'message_id',
   })
   message: MessageEntity;
 }
