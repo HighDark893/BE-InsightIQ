@@ -1,13 +1,18 @@
 import { Request, Response, Router } from 'express';
 import { MessageService } from '../services/MessageService';
 import { CreateMessageDto } from '../dto/createMessage.dto';
+import { Sender } from '../constants/SenderEnum';
 
 const router = Router();
 const messageService = new MessageService();
 
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const createMessageDto: CreateMessageDto = req.body;
+    const createMessageDto = new CreateMessageDto();
+
+    createMessageDto.sender = req.body.sender as Sender;
+    createMessageDto.content = req.body.content;
+    createMessageDto.chatSessionId = req.body.chatSessionId;
 
     const messageDto = await messageService.create(createMessageDto);
     res.status(201).json(messageDto);
@@ -25,10 +30,10 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:chatSessionId', async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
-    const messageDto = await messageService.getById(id);
+    const chatSessionId = parseInt(req.params.chatSessionId);
+    const messageDto = await messageService.getByChatSessionId(chatSessionId);
 
     res.status(200).json(messageDto);
   } catch (error) {
@@ -36,7 +41,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const success = await messageService.delete(id);

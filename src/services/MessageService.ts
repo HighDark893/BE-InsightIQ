@@ -42,7 +42,16 @@ export class MessageService {
   public async getByChatSessionId(
     chatSessionId: number,
   ): Promise<MessageDto[]> {
-    return await this.messageRepository.findByChatSessionId(chatSessionId);
+    const messageEntities =
+      await this.messageRepository.findByChatSessionId(chatSessionId);
+
+    const messageDtos: MessageDto[] = [];
+
+    messageEntities.forEach((m) => {
+      messageDtos.push(MessageDto.fromEntity(m));
+    });
+
+    return messageDtos;
   }
 
   public async delete(id: number): Promise<Boolean> {
