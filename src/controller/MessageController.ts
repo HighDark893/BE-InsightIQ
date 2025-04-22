@@ -1,64 +1,58 @@
-import { Request, Response } from 'express';
+import { Request, Response, Router } from 'express';
 import { MessageService } from '../services/MessageService';
+import { CreateMessageDto } from '../dto/createMessage.dto';
+import { Sender } from '../constants/SenderEnum';
 
+const router = Router();
 const messageService = new MessageService();
 
-export const getMessages = async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
-    const messages = await messageService.getAllMessages();
-    res.json(messages);
+    const createMessageDto = new CreateMessageDto();
+
+    createMessageDto.sender = req.body.sender as Sender;
+    createMessageDto.content = req.body.content;
+    createMessageDto.chatSessionId = req.body.chatSessionId;
+
+    const messageDto = await messageService.create(createMessageDto);
+    res.status(201).json(messageDto);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to create message', error });
+  }
+});
+
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const messages = await messageService.getAll();
+    res.status(200).json(messages);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch messages', error });
   }
-};
+});
 
-export const getMessage = async (req: Request, res: Response) => {
+router.get('/:chatSessionId', async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
-    const message = await messageService.getMessageById(id);
-    if (!message) {
-      return res.status(404).json({ message: 'Message not found' });
-    }
-    res.json(message);
+    const chatSessionId = parseInt(req.params.chatSessionId);
+    const messageDto = await messageService.getByChatSessionId(chatSessionId);
+
+    res.status(200).json(messageDto);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch message', error });
   }
-};
+});
 
-export const createMessage = async (req: Request, res: Response) => {
-  try {
-    const { userChatbotId, tenantId, sender, content } = req.body;
-
-    if (
-      typeof userChatbotId !== 'number' ||
-      typeof tenantId !== 'number' ||
-      typeof sender !== 'string' ||
-      typeof content !== 'string'
-    ) {
-      return res.status(400).json({ message: 'Invalid input' });
-    }
-
-    const message = await messageService.createChatSession(
-      userChatbotId,
-      tenantId,
-      sender,
-      content,
-    );
-    res.status(201).json(message);
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to create chat session', error });
-  }
-};
-
-export const deleteMessage = async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    const success = await messageService.deleteMessage(id);
+    const success = await messageService.delete(id);
     if (!success) {
-      return res.status(404).json({ message: 'Message not found' });
+      res.status(404).json({ message: "Message doesn't exist." });
+    } else {
+      res.status(204).send();
     }
-    res.status(204).send();
   } catch (error) {
     res.status(500).json({ message: 'Failed to delete message', error });
   }
-};
+});
+
+export default router;
