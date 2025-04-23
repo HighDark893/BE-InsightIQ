@@ -1,87 +1,68 @@
-// Cai nay thi t nghi nen tao file db roi import
-import db from '../db';
-import { Feedback } from '../dto/Feedback';
+import { FeedbackDto } from '../dto/feedback.dto';
+import { CreateFeedbackDto } from '../dto/createFeedback.dto';
+import { FeedbackEntity } from '../entity/feedback.entity';
+import { FeedbackRepository } from '../repository/feedback.repository';
 
-export const createFeedback = async (
-  chatSessionId: number,
-  rating: string,
-  comment: string,
-): Promise<Feedback> => {
-  const connection = await db.getConnection();
-  try {
-    const [result]: any = await connection.execute(
-      'INSERT INTO feedback (chat_session_id, rating, comment) VALUES (?, ?, ?)',
-      [chatSessionId, rating, comment],
-    );
+export class FeedbackService {
+  private readonly feedbackRepository = new FeedbackRepository();
 
-    const [rows] = await connection.execute(
-      'SELECT id, chat_session_id, rating, comment, created_at FROM feedback WHERE id = ?',
-      [result.insertId],
-    );
-    const row = (rows as any[])[0];
+  public async create(
+    createFeedbackDto: CreateFeedbackDto,
+  ): Promise<FeedbackDto> {
+    const feedbackEntity = new FeedbackEntity();
 
-    return {
-      id: row.id,
-      chatSessionId: row.chat_session_id,
-      rating: row.rating,
-      comment: row.comment,
-      createdAt: new Date(row.created_at),
-    };
-  } finally {
-    connection.release();
+    feedbackEntity.rating = createFeedbackDto.rating;
+    feedbackEntity.comment = createFeedbackDto.comment;
+    feedbackEntity.messageId = createFeedbackDto.messageId;
+
+    const savedFeedbackEntity =
+      await this.feedbackRepository.save(feedbackEntity);
+
+    return this.mapFeedbackEntityToDto(savedFeedbackEntity);
   }
-};
 
-export const getFeedbacks = async (): Promise<Feedback[]> => {
-  const connection = await db.getConnection();
-  try {
-    const [rows] = await connection.execute(
-      'SELECT id, chat_session_id, rating, comment, created_at FROM feedback ORDER BY created_at DESC',
-    );
+  public async getAll(): Promise<FeedbackDto[]> {
+    const feedbackEntities = await this.feedbackRepository.findAll();
+    const feedbackDtos: FeedbackDto[] = [];
 
-    return (rows as any[]).map((row) => ({
-      id: row.id,
-      chatSessionId: row.chat_session_id,
-      rating: row.rating,
-      comment: row.comment,
-      createdAt: new Date(row.created_at),
-    }));
-  } finally {
-    connection.release();
+    feedbackEntities.forEach((f) => {
+      feedbackDtos.push(this.mapFeedbackEntityToDto(f));
+    });
+
+    return feedbackDtos;
   }
-};
 
-export const getFeedbackById = async (id: number): Promise<Feedback | null> => {
-  const connection = db.getConnection();
-  try {
-    const [rows] = await connection.execute(
-      'SELECT id, chat_session_id, rating, comment, created_at FROM chat_session WHERE id = ?',
-      [id],
-    );
-    const row = (rows as any[])[0];
-    return row
-      ? {
-          id: row.id,
-          chatSessionId: row.chat_session_id,
-          rating: row.rating,
-          comment: row.comment,
-          createdAt: new Date(row.created_at),
-        }
-      : null;
-  } finally {
-    connection.release();
-  }
-};
+  public async getById(id: number): Promise<FeedbackDto | null> {
+    const feedbackEntity = await this.feedbackRepository.findById(id);
 
-export const deleteFeedback = async (id: number): Promise<boolean> => {
-  const connection = await db.getConnection();
-  try {
-    const [result]: any = await connection.execute(
-      'DELETE FROM feedback WHERE id = ?',
-      [id],
-    );
-    return result.affectedRows > 0;
-  } finally {
-    connection.release();
+    if (!feedbackEntity) {
+      return null;
+    }
+
+    return this.mapFeedbackEntityToDto(feedbackEntity);
   }
-};
+
+  public async delete(id: number): Promise<Boolean> {
+    const feedbackEntity = await this.feedbackRepository.findById(id);
+
+    if (!feedbackEntity) {
+      return false;
+    }
+
+    this.feedbackRepository.remove(feedbackEntity);
+    return true;
+  }
+
+  private mapFeedbackEntityToDto(entity: FeedbackEntity): FeedbackDto {
+    const feedbackDto = new FeedbackDto();
+
+    feedbackDto.id = entity.id;
+    feedbackDto.rating = entity.rating;
+    feedbackDto.comment = entity.comment;
+    feedbackDto.messageId = entity.messageId;
+    feedbackDto.createdAt =
+      entity.createdAt.toTimeString() + entity.createdAt.toDateString();
+
+    return feedbackDto;
+  }
+}
