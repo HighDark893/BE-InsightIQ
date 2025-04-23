@@ -9,4 +9,14 @@ export class FeedbackRepository {
   public async save(feedback: FeedbackEntity): Promise<FeedbackEntity> {
     return await this.feedbackRepository.save(feedback);
   }
+
+  public async findAll(): Promise<FeedbackEntity[]> {
+    return await this.feedbackRepository.find();
+  }
+
+  public async findById(id: number): Promise<FeedbackEntity | null> {
+    return await this.feedbackRepository.findOne({
+      where: { id: id },
+    });
+  }
 }
