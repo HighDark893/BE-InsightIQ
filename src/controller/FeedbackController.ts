@@ -21,6 +21,26 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const feedbacks = await feedbackService.getAll();
+    res.json(feedbacks);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch feedbacks', error });
+  }
+});
+
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const feedback = await feedbackService.getById(id);
+
+    res.json(feedback);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch feedback', error });
+  }
+});
+
 export default router;
 
 // export const getFeedbacks = async (req: Request, res: Response) => {
