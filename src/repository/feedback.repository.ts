@@ -19,4 +19,8 @@ export class FeedbackRepository {
       where: { id: id },
     });
   }
+
+  public async remove(feedback: FeedbackEntity): Promise<FeedbackEntity> {
+    return await this.feedbackRepository.remove(feedback);
+  }
 }

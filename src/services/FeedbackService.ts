@@ -42,6 +42,17 @@ export class FeedbackService {
     return this.mapFeedbackEntityToDto(feedbackEntity);
   }
 
+  public async delete(id: number): Promise<Boolean> {
+    const feedbackEntity = await this.feedbackRepository.findById(id);
+
+    if (!feedbackEntity) {
+      return false;
+    }
+
+    this.feedbackRepository.remove(feedbackEntity);
+    return true;
+  }
+
   private mapFeedbackEntityToDto(entity: FeedbackEntity): FeedbackDto {
     const feedbackDto = new FeedbackDto();
 

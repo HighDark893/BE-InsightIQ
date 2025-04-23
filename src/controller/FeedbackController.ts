@@ -41,6 +41,20 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const success = await feedbackService.delete(id);
+    if (!success) {
+      res.status(404).json({ message: 'Feedback not found' });
+    } else {
+      res.status(204).send();
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete feedback', error });
+  }
+});
+
 export default router;
 
 // export const getFeedbacks = async (req: Request, res: Response) => {
