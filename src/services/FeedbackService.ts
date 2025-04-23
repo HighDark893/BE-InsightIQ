@@ -17,15 +17,40 @@ export class FeedbackService {
 
     const savedFeedbackEntity =
       await this.feedbackRepository.save(feedbackEntity);
+
+    return this.mapFeedbackEntityToDto(savedFeedbackEntity);
+  }
+
+  public async getAll(): Promise<FeedbackDto[]> {
+    const feedbackEntities = await this.feedbackRepository.findAll();
+    const feedbackDtos: FeedbackDto[] = [];
+
+    feedbackEntities.forEach((f) => {
+      feedbackDtos.push(this.mapFeedbackEntityToDto(f));
+    });
+
+    return feedbackDtos;
+  }
+
+  public async getById(id: number): Promise<FeedbackDto | null> {
+    const feedbackEntity = await this.feedbackRepository.findById(id);
+
+    if (!feedbackEntity) {
+      return null;
+    }
+
+    return this.mapFeedbackEntityToDto(feedbackEntity);
+  }
+
+  private mapFeedbackEntityToDto(entity: FeedbackEntity): FeedbackDto {
     const feedbackDto = new FeedbackDto();
 
-    feedbackDto.id = savedFeedbackEntity.id;
-    feedbackDto.rating = savedFeedbackEntity.rating;
-    feedbackDto.comment = savedFeedbackEntity.comment;
-    feedbackDto.messageId = savedFeedbackEntity.messageId;
+    feedbackDto.id = entity.id;
+    feedbackDto.rating = entity.rating;
+    feedbackDto.comment = entity.comment;
+    feedbackDto.messageId = entity.messageId;
     feedbackDto.createdAt =
-      savedFeedbackEntity.createdAt.toTimeString() +
-      savedFeedbackEntity.createdAt.toDateString();
+      entity.createdAt.toTimeString() + entity.createdAt.toDateString();
 
     return feedbackDto;
   }
