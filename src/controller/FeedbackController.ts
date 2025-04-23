@@ -21,6 +21,8 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+export default router;
+
 // export const getFeedbacks = async (req: Request, res: Response) => {
 //   try {
 //     const feedbacks = await feedbackService.getAllFeedbacks();
