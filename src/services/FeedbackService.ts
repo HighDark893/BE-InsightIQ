@@ -8,13 +8,25 @@ export class FeedbackService {
 
   public async create(
     createFeedbackDto: CreateFeedbackDto,
-  ): Promise<FeedbackEntity> {
+  ): Promise<FeedbackDto> {
     const feedbackEntity = new FeedbackEntity();
 
     feedbackEntity.rating = createFeedbackDto.rating;
     feedbackEntity.comment = createFeedbackDto.comment;
     feedbackEntity.messageId = createFeedbackDto.messageId;
 
-    return await this.feedbackRepository.save(feedbackEntity);
+    const savedFeedbackEntity =
+      await this.feedbackRepository.save(feedbackEntity);
+    const feedbackDto = new FeedbackDto();
+
+    feedbackDto.id = savedFeedbackEntity.id;
+    feedbackDto.rating = savedFeedbackEntity.rating;
+    feedbackDto.comment = savedFeedbackEntity.comment;
+    feedbackDto.messageId = savedFeedbackEntity.messageId;
+    feedbackDto.createdAt =
+      savedFeedbackEntity.createdAt.toTimeString() +
+      savedFeedbackEntity.createdAt.toDateString();
+
+    return feedbackDto;
   }
 }
