@@ -20,4 +20,24 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const documents = await documentService.getAll();
+    res.status(200).json(documents);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch documents', error });
+  }
+});
+
+router.get('/:tenantId', async (req: Request, res: Response) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId);
+    const documents = await documentService.getByTenantId(tenantId);
+
+    res.status(200).json(documents);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch documents', error });
+  }
+});
+
 export default router;
