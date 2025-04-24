@@ -57,6 +57,7 @@ export class DocumentService {
   private mapDocumentEntityToDto(entity: DocumentEntity): DocumentDto {
     const documentDto = new DocumentDto();
 
+    documentDto.id = entity.id;
     documentDto.fileName = entity.fileName;
     documentDto.fileUrl = entity.fileUrl;
     documentDto.tenantId = entity.tenantId;
