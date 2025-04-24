@@ -21,9 +21,43 @@ export class DocumentService {
     return this.mapDocumentEntityToDto(savedDocumentEntity);
   }
 
+  public async getAll(): Promise<DocumentDto[]> {
+    const documentEntities = await this.documentRepository.findAll();
+    const documentDtos: DocumentDto[] = [];
+
+    documentEntities.forEach((d) => {
+      documentDtos.push(this.mapDocumentEntityToDto(d));
+    });
+
+    return documentDtos;
+  }
+
+  public async getById(id: number): Promise<DocumentDto | null> {
+    const documentEntity = await this.documentRepository.findById(id);
+
+    if (!documentEntity) {
+      return null;
+    }
+
+    return this.mapDocumentEntityToDto(documentEntity);
+  }
+
+  public async getByTenantId(tenantId: number): Promise<DocumentDto[]> {
+    const documentEntities =
+      await this.documentRepository.findByTenantId(tenantId);
+    const documentDtos: DocumentDto[] = [];
+
+    documentEntities.forEach((d) => {
+      documentDtos.push(this.mapDocumentEntityToDto(d));
+    });
+
+    return documentDtos;
+  }
+
   private mapDocumentEntityToDto(entity: DocumentEntity): DocumentDto {
     const documentDto = new DocumentDto();
 
+    documentDto.id = entity.id;
     documentDto.fileName = entity.fileName;
     documentDto.fileUrl = entity.fileUrl;
     documentDto.tenantId = entity.tenantId;
