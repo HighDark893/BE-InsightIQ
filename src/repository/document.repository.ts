@@ -24,4 +24,8 @@ export class DocumentRepository {
       where: { id: id },
     });
   }
+
+  public async remove(documentEntity: DocumentEntity): Promise<DocumentEntity> {
+    return await this.documentRepository.remove(documentEntity);
+  }
 }
