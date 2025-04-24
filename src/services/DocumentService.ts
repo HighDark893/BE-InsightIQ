@@ -54,6 +54,17 @@ export class DocumentService {
     return documentDtos;
   }
 
+  public async delete(id: number): Promise<Boolean> {
+    const documentEntity = await this.documentRepository.findById(id);
+
+    if (!documentEntity) {
+      return false;
+    }
+
+    this.documentRepository.remove(documentEntity);
+    return true;
+  }
+
   private mapDocumentEntityToDto(entity: DocumentEntity): DocumentDto {
     const documentDto = new DocumentDto();
 
