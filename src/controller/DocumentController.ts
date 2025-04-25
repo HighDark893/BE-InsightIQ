@@ -1,36 +1,58 @@
-import { Request, Response } from "express";
-import { DocumentService } from "../services/DocumentService";
+import { Request, Response, Router } from 'express';
+import { DocumentService } from '../services/DocumentService';
+import { CreateDocumentDto } from '../dto/createDocument.dto';
 
-export class DocumentController {
-  static async getAll(req: Request, res: Response) {
-    const documents = await DocumentService.getAllDocuments();
-    res.json(documents);
-  }
+const router = Router();
+const documentService = new DocumentService();
 
-  static async getById(req: Request, res: Response) {
-    const document = await DocumentService.getDocumentById(
-      Number(req.params.id)
-    );
-    document
-      ? res.json(document)
-      : res.status(404).json({ message: "Not found" });
-  }
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const createDocumentDto = new CreateDocumentDto();
 
-  static async create(req: Request, res: Response) {
-    const document = await DocumentService.createDocument(req.body);
-    res.status(201).json(document);
-  }
+    createDocumentDto.fileName = req.body.fileName;
+    createDocumentDto.fileUrl = req.body.fileUrl;
+    createDocumentDto.tenantId = req.body.tenantId;
 
-  static async update(req: Request, res: Response) {
-    const document = await DocumentService.updateDocument(
-      Number(req.params.id),
-      req.body
-    );
-    res.json(document);
+    const documentDto = await documentService.create(createDocumentDto);
+    res.status(201).json(documentDto);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to create document', error });
   }
+});
 
-  static async delete(req: Request, res: Response) {
-    await DocumentService.deleteDocument(Number(req.params.id));
-    res.json({ message: "Deleted successfully" });
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const documents = await documentService.getAll();
+    res.status(200).json(documents);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch documents', error });
   }
-}
+});
+
+router.get('/:tenantId', async (req: Request, res: Response) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId);
+    const documents = await documentService.getByTenantId(tenantId);
+
+    res.status(200).json(documents);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch documents', error });
+  }
+});
+
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const success = await documentService.delete(id);
+
+    if (!success) {
+      res.status(404).json({ message: 'Document not found' });
+    } else {
+      res.status(204).send();
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete document', error });
+  }
+});
+
+export default router;

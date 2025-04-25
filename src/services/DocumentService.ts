@@ -1,24 +1,80 @@
-import Document from "../dto/Document";
+import { DocumentDto } from '../dto/document.dto';
+import { CreateDocumentDto } from '../dto/createDocument.dto';
+import { DocumentEntity } from '../entity/document.entity';
+import { DocumentRepository } from '../repository/document.repository';
 
 export class DocumentService {
-  static async getAllDocuments() {
-    return await Document.findAll();
+  private readonly documentRepository = new DocumentRepository();
+
+  public async create(
+    createDocumentDto: CreateDocumentDto,
+  ): Promise<DocumentDto> {
+    const documentEntity = new DocumentEntity();
+
+    documentEntity.fileName = createDocumentDto.fileName;
+    documentEntity.fileUrl = createDocumentDto.fileUrl;
+    documentEntity.tenantId = createDocumentDto.tenantId;
+
+    const savedDocumentEntity =
+      await this.documentRepository.save(documentEntity);
+
+    return this.mapDocumentEntityToDto(savedDocumentEntity);
   }
 
-  static async getDocumentById(id: number) {
-    return await Document.findByPk(id);
+  public async getAll(): Promise<DocumentDto[]> {
+    const documentEntities = await this.documentRepository.findAll();
+    const documentDtos: DocumentDto[] = [];
+
+    documentEntities.forEach((d) => {
+      documentDtos.push(this.mapDocumentEntityToDto(d));
+    });
+
+    return documentDtos;
   }
 
-  static async createDocument(data: any) {
-    return await Document.create(data);
+  public async getById(id: number): Promise<DocumentDto | null> {
+    const documentEntity = await this.documentRepository.findById(id);
+
+    if (!documentEntity) {
+      return null;
+    }
+
+    return this.mapDocumentEntityToDto(documentEntity);
   }
 
-  static async updateDocument(id: number, data: any) {
-    await Document.update(data, { where: { id } });
-    return await Document.findByPk(id);
+  public async getByTenantId(tenantId: number): Promise<DocumentDto[]> {
+    const documentEntities =
+      await this.documentRepository.findByTenantId(tenantId);
+    const documentDtos: DocumentDto[] = [];
+
+    documentEntities.forEach((d) => {
+      documentDtos.push(this.mapDocumentEntityToDto(d));
+    });
+
+    return documentDtos;
   }
 
-  static async deleteDocument(id: number) {
-    return await Document.destroy({ where: { id } });
+  public async delete(id: number): Promise<Boolean> {
+    const documentEntity = await this.documentRepository.findById(id);
+
+    if (!documentEntity) {
+      return false;
+    }
+
+    this.documentRepository.remove(documentEntity);
+    return true;
+  }
+
+  private mapDocumentEntityToDto(entity: DocumentEntity): DocumentDto {
+    const documentDto = new DocumentDto();
+
+    documentDto.id = entity.id;
+    documentDto.fileName = entity.fileName;
+    documentDto.fileUrl = entity.fileUrl;
+    documentDto.tenantId = entity.tenantId;
+    documentDto.createdAt =
+      entity.createdAt.toTimeString() + entity.createdAt.toDateString();
+
+    return documentDto;
   }
 }
