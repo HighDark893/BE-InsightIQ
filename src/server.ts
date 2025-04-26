@@ -1,7 +1,7 @@
 import app from './app';
 import { env } from './config/app.config';
 import http from 'http'; // Import Node.js http module
-import { setupSocketIO } from './socket'; // Import your new setup function
+import { setupSocketIO } from './socket';
 import { Logger } from './utils/Logger'; //
 
 const logger = Logger.getInstance(); //
