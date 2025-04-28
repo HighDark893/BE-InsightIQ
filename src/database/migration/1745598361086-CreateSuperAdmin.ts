@@ -1,0 +1,18 @@
+import { MigrationInterface, QueryRunner } from "typeorm";
+
+export class CreateSuperAdmin1745598361086 implements MigrationInterface {
+
+    public async up(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`
+            CREATE TABLE SUPERADMIN (
+                 ID BIGINT NOT NULL AUTO_INCREMENT,
+                 USERNAME VARCHAR(255) UNIQUE,
+                 PRIMARY KEY (ID)
+            );
+        `);
+    }
+
+    public async down(queryRunner: QueryRunner): Promise<void> {
+    }
+
+}
