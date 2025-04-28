@@ -1,7 +1,7 @@
 import { Request, Response, Router } from 'express';
 import { FeedbackService } from '../services/FeedbackService';
 import { CreateFeedbackDto } from '../dto/createFeedback.dto';
-import { Rating } from '../constants/RatingEnum';
+import { Rating } from '../constants/rating.enum';
 
 const router = Router();
 const feedbackService = new FeedbackService();

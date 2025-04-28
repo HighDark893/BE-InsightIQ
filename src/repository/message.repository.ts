@@ -1,10 +1,10 @@
-import { myDataSource } from '../config/database.config';
+import { dataSource } from '../config/database.config';
 import { MessageDto } from '../dto/message.dto';
 import { MessageEntity } from '../entity/message.entity';
 
 export class MessageRepository {
   private readonly messageRepository =
-    myDataSource.getRepository(MessageEntity);
+    dataSource.getRepository(MessageEntity);
 
   public async save(message: MessageEntity): Promise<MessageDto> {
     return MessageDto.fromEntity(await this.messageRepository.save(message));

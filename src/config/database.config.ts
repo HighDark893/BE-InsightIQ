@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const pathDir = path.join(__dirname);
 
-export const myDataSource = new DataSource({
+export const dataSource = new DataSource({
   type: "mariadb",
   host: "localhost",
   port: 3306,

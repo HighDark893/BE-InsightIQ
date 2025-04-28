@@ -1,7 +1,7 @@
 import { Request, Response, Router } from 'express';
 import { MessageService } from '../services/MessageService';
 import { CreateMessageDto } from '../dto/createMessage.dto';
-import { Sender } from '../constants/SenderEnum';
+import { Sender } from '../constants/sender.enum';
 
 const router = Router();
 const messageService = new MessageService();

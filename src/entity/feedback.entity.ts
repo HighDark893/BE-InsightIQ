@@ -6,7 +6,7 @@ import {
   OneToOne,
   JoinColumn,
 } from 'typeorm';
-import { Rating } from '../constants/RatingEnum';
+import { Rating } from '../constants/rating.enum';
 import { MessageEntity } from './message.entity';
 
 @Entity({

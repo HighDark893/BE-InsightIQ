@@ -2,7 +2,7 @@ import { MessageDto } from '../dto/message.dto';
 import { CreateMessageDto } from '../dto/createMessage.dto';
 import { MessageEntity } from '../entity/message.entity';
 import { MessageRepository } from '../repository/message.repository';
-import { Sender } from '../constants/SenderEnum';
+import { Sender } from '../constants/sender.enum';
 
 export class MessageService {
   private readonly messageRepository = new MessageRepository();

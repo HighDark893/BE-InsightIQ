@@ -1,8 +1,8 @@
 import axios from 'axios';
-import { UserRepository } from '../../repository/user.repository';
+import { UserRepository } from '../../repository/user/user.repository';
 import { Logger } from '../../utils/Logger';
 import { UserEntity } from '../../entity/user.entity';
-import { UserDto } from '../../dto/user.dto';
+import { UserDto } from '../../dto/user/user.dto';
 
 
 export class UserService {

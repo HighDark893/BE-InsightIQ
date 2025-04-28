@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Sender } from '../constants/SenderEnum';
+import { Sender } from '../constants/sender.enum';
 import { ChatSessionEntity } from './chatSession.entity';
 
 @Entity({
