@@ -8,18 +8,18 @@ import { Logger as WinstonLogger } from 'winston';
 
 // Import necessary local services, DTOs, and utilities
 import { Logger } from './utils/Logger'; // Adjust path if needed
-import { MessageService } from './services/MessageService';
-import { ChatSessionService } from './services/ChatSessionService';
-import { ChatbotService } from './services/ChatbotService'; // <--- Import ChatbotService
-import { CreateMessageDto } from './dto/createMessage.dto';
-import { Sender } from './constants/SenderEnum';
-import { CreateChatSessionDto } from './dto/createChatSession.dto';
+import { MessageService } from './services/MessageService'; // [cite: 7]
+import { ChatSessionService } from './services/ChatSessionService'; // [cite: 9]
+import { ChatbotService } from './services/ChatbotService';
+import { CreateMessageDto } from './dto/createMessage.dto'; // [cite: 56]
+import { Sender } from './constants/SenderEnum'; // [cite: 32]
+import { CreateChatSessionDto } from './dto/createChatSession.dto'; // [cite: 50]
 
 // Instantiate services needed within socket logic
-const logger: WinstonLogger = Logger.getInstance(); // Use explicit type
-const messageService = new MessageService();
-const chatSessionService = new ChatSessionService();
-const chatbotService = new ChatbotService(); // <--- Instantiate ChatbotService
+const logger: WinstonLogger = Logger.getInstance(); // [cite: 30] Use explicit type
+const messageService = new MessageService(); // [cite: 7]
+const chatSessionService = new ChatSessionService(); // [cite: 9]
+const chatbotService = new ChatbotService();
 
 export function setupSocketIO(httpServer: HttpServer): SocketIOServer {
   logger.info('Setting up Socket.IO server...');
@@ -50,7 +50,11 @@ export function setupSocketIO(httpServer: HttpServer): SocketIOServer {
       }) => {
         logger.info(`Message received from ${socket.id}:`, messageData);
 
+        let currentSessionId: number | null = null; // Declare here to ensure scope
+        let tenantId: number = messageData.tenantId; // Ensure tenantId has scope
+
         try {
+          // Wrap session handling and message processing
           // --- Input Validation ---
           if (!messageData.text || !messageData.tenantId) {
             logger.warn('Received invalid message data', messageData);
@@ -60,10 +64,10 @@ export function setupSocketIO(httpServer: HttpServer): SocketIOServer {
             return;
           }
 
-          // --- Session Handling (Revised & Corrected) ---
-          let currentSessionId: number | null = messageData.sessionId ?? null;
+          // --- Session Handling ---
+          currentSessionId = messageData.sessionId ?? null;
           let sessionToken: string | null = messageData.sessionToken ?? null;
-          let tenantId: number = messageData.tenantId;
+          tenantId = messageData.tenantId;
 
           // Placeholder: Logic to find session by token
           // if (!currentSessionId && sessionToken) { ... }
@@ -73,14 +77,14 @@ export function setupSocketIO(httpServer: HttpServer): SocketIOServer {
             logger.info(
               `No valid session ID found/provided, creating new session for tenant ${tenantId}`,
             );
-            const newSessionDto = new CreateChatSessionDto();
+            const newSessionDto = new CreateChatSessionDto(); // [cite: 50]
             sessionToken = crypto.randomBytes(32).toString('hex');
             newSessionDto.tenantId = tenantId;
             newSessionDto.userChatbotId = 0; // Adjust if needed
             newSessionDto.sessionToken = sessionToken;
 
             const createdSession =
-              await chatSessionService.create(newSessionDto);
+              await chatSessionService.create(newSessionDto); // [cite: 9]
             if (!createdSession || !createdSession.id) {
               throw new Error(
                 'Failed to create a new chat session or retrieve its ID.',
@@ -98,13 +102,10 @@ export function setupSocketIO(httpServer: HttpServer): SocketIOServer {
 
           // --- CRITICAL CHECK ---
           if (typeof currentSessionId !== 'number') {
-            logger.error(
-              `Failed to obtain a valid numeric session ID for tenant ${tenantId}. Aborting message save.`,
+            // Throw error instead of returning, so main catch block handles it
+            throw new Error(
+              `Failed to obtain a valid numeric session ID for tenant ${tenantId}.`,
             );
-            socket.emit('error', {
-              message: 'Failed to establish a valid chat session.',
-            });
-            return;
           }
 
           logger.info(`Proceeding with session ID: ${currentSessionId}`);
@@ -117,53 +118,61 @@ export function setupSocketIO(httpServer: HttpServer): SocketIOServer {
           // --- End Session Handling ---
 
           // --- Save User Message ---
-          const userMessage = new CreateMessageDto();
-          userMessage.chatSessionId = currentSessionId; // Guaranteed to be a number
+          const userMessage = new CreateMessageDto(); // [cite: 56]
+          userMessage.chatSessionId = currentSessionId;
           userMessage.content = messageData.text;
-          userMessage.sender = Sender.User;
-          await messageService.create(userMessage);
+          userMessage.sender = Sender.User; // [cite: 32]
+          await messageService.create(userMessage); // [cite: 7]
           logger.info(`User message saved for session ${currentSessionId}`);
 
-          // --- Generate Bot Response using ChatbotService --- // <--- CHANGE AREA ---
+          // --- Generate Bot Response (Object with type hint) ---
           logger.info(
             `Calling ChatbotService.generateResponse for session ${currentSessionId}`,
           );
-          const botResponseContent = await chatbotService.generateResponse(
-            messageData.text,
-            currentSessionId,
-            tenantId,
-          );
+          const botResponse: { type: string; content: string } =
+            await chatbotService.generateResponse(
+              messageData.text,
+              currentSessionId,
+              tenantId,
+            );
           logger.info(
-            `ChatbotService returned response for session ${currentSessionId}`,
+            `ChatbotService returned response type '${botResponse.type}' for session ${currentSessionId}`,
           );
-          // --- End CHANGE AREA ---
 
-          // --- Save Bot Message ---
-          const botMessage = new CreateMessageDto();
-          botMessage.chatSessionId = currentSessionId; // Guaranteed to be a number
-          botMessage.content = botResponseContent; // <--- Use the actual response
-          botMessage.sender = Sender.ChatBot;
-          const savedBotMessage = await messageService.create(botMessage);
-          logger.info(`Bot message saved for session ${currentSessionId}`);
-
-          // --- Send Response to Client ---
-          io.to(socket.id).emit('newMessage', {
-            id: savedBotMessage.id,
-            sender: savedBotMessage.sender,
-            content: savedBotMessage.content, // <--- Send the actual response
-            createdAt: savedBotMessage.createdAt,
-          });
+          // --- Save Bot Message (Save only the text content) ---
+          const botMessageToSave = new CreateMessageDto(); // [cite: 56]
+          botMessageToSave.chatSessionId = currentSessionId;
+          botMessageToSave.content = botResponse.content; // Save plain text content
+          botMessageToSave.sender = Sender.ChatBot; // [cite: 32]
+          await messageService.create(botMessageToSave); // [cite: 7]
           logger.info(
-            `Sent chatbot response to socket ${socket.id} for session ${currentSessionId}`,
+            `Bot message (text content) saved for session ${currentSessionId}`,
+          );
+
+          // --- Send Structured Hint Response to Client ---
+          const messageToSend = {
+            sender: 'bot',
+            type: botResponse.type,
+            content: botResponse.content,
+            timestamp: new Date().toISOString(),
+          };
+          io.to(socket.id).emit('newMessage', messageToSend);
+          logger.info(
+            `Sent hinted response ('${botResponse.type}') to socket ${socket.id} for session ${currentSessionId}`,
           );
         } catch (error) {
+          // Catch errors during session handling, message saving, or generation
           logger.error(
-            `Error handling message for socket ${socket.id}:`,
+            `Error handling message for socket ${socket.id}, session ${currentSessionId ?? 'UNKNOWN'}:`,
             error,
           );
-          socket.emit('error', {
-            message:
-              'An internal server error occurred while processing your message.',
+          // Send a generic text error back to the client
+          io.to(socket.id).emit('newMessage', {
+            sender: 'bot',
+            type: 'text',
+            content:
+              'I apologize, but I encountered an error processing your request. Please try again or contact support if the issue persists.',
+            timestamp: new Date().toISOString(),
           });
         }
       },
