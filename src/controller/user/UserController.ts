@@ -1,8 +1,7 @@
 import { Request, Response, Router } from 'express';
-import { ProxyService } from '../../services/ProxyService';
 import { Logger } from '../../utils/Logger';
 import { UserService } from '../../services/user/UserService';
-import { UserDto } from '../../dto/user.dto';
+import { UserDto } from '../../dto/user/user.dto';
 
 const router = Router();
 const userService = new UserService();
