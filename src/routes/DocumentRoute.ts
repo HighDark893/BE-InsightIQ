@@ -1,5 +1,4 @@
 import express from "express";
-import { DocumentController } from "../controllers/DocumentController";
 
 const router = express.Router();
 
