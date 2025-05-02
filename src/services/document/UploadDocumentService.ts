@@ -1,57 +1,212 @@
-// src/services/document/UploadDocumentService.ts
+// src/services/document/UploadDocumentService.ts (Modified)
 //NHỚ CÀI npm install pdf-parse !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 import { DocumentDto } from '../../dto/document.dto';
-import { DocumentEntity } from '../../entity/document.entity'; // Ensure your entity has size and supabasePath
+import { DocumentEntity } from '../../entity/document.entity';
 import { DocumentRepository } from '../../repository/document.repository';
-import { supabase } from '../../config/supabase.config'; // Import Supabase client
+import { supabase } from '../../config/supabase.config';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import * as fs from 'fs/promises'; // Use promises API for async file operations
-import * as os from 'os'; // To get temporary directory
-
-// --- Import necessary services/utils ---
-import { ChatbotService } from '../ChatbotService'; // Adjust path if needed
-import { Logger } from '../../utils/Logger'; // Adjust path if needed
-import { Logger as WinstonLogger } from 'winston'; // Import Winston Logger type for clarity
+import * as fs from 'fs/promises';
+import * as os from 'os';
+import { DocumentIngestionService } from './DocumentIngestionService';
+import { Logger } from '../../utils/Logger';
+import { Logger as WinstonLogger } from 'winston';
 
 dotenv.config();
 
-// Type definition for Multer file (already present in your file)
-declare global {
-  // ... (Multer File type definition) ...
-}
+// Multer file type definition
+// ... (assume it's defined or imported correctly) ...
 
 export class UploadDocumentService {
   private readonly documentRepository = new DocumentRepository();
   private readonly supabaseBucketName =
     process.env.SUPABASE_BUCKET_NAME || 'documents';
-  // --- Instantiate ChatbotService and Logger ---
-  private readonly chatbotService: ChatbotService;
-  private readonly logger: WinstonLogger; // Use the imported Winston type
+  private readonly documentIngestionService: DocumentIngestionService;
+  private readonly logger: WinstonLogger;
 
   constructor() {
-    this.logger = Logger.getInstance(); // Assuming Logger.getInstance() returns a WinstonLogger instance
+    this.logger = Logger.getInstance();
     try {
-      this.chatbotService = new ChatbotService();
+      this.documentIngestionService = new DocumentIngestionService();
       this.logger.info(
-        '[UploadService] ChatbotService initialized successfully.',
-      ); // Correct: Use .info()
+        '[UploadService] DocumentIngestionService initialized successfully.',
+      );
     } catch (error) {
-      // --- Corrected Error Logging ---
       this.logger.error(
-        '[UploadService] Failed to initialize ChatbotService:',
+        '[UploadService] Failed to initialize DocumentIngestionService:',
         { error },
-      ); // Correct: Use .error() and pass error object
+      );
       throw new Error(
-        'Failed to initialize dependent ChatbotService in UploadDocumentService.',
+        'Failed to initialize dependent DocumentIngestionService in UploadDocumentService.',
       );
     }
-    this.logger.info('[UploadService] Initialized.'); // Correct: Use .info()
+    this.logger.info('[UploadService] Initialized.');
   }
 
-  // Function to map entity to DTO
+  // --- Method signature updated ---
+  public async uploadAndSave(
+    file: Express.Multer.File,
+    tenantId: number,
+    validFrom: string, // Added
+    validUntil: string, // Added
+  ): Promise<DocumentDto> {
+    this.logger.info(
+      `[UploadService] Starting upload & ingest process for tenant ${tenantId}, file: ${file.originalname}, validFrom: ${validFrom}, validUntil: ${validUntil}`,
+    );
+
+    // ... (file validation, path generation remain the same) ...
+    const sanitizedOriginalName = file.originalname.replace(
+      /[^a-zA-Z0-9.\-_]/g,
+      '_',
+    );
+    const uniqueFileNameForPath = `${Date.now()}-${sanitizedOriginalName}`;
+    const supabasePath = `tenant_${tenantId}/${uniqueFileNameForPath}`; // Example path structure
+
+    let publicUrl = '';
+    let savedDocumentEntity: DocumentEntity | null = null;
+    let tempFilePath: string | null = null;
+    let actualSupabasePath = ''; // Define higher for potential rollback
+
+    try {
+      // --- 1. Upload to Supabase ---
+      this.logger.info(
+        `[UploadService] Uploading to Supabase path: '${supabasePath}'`,
+      );
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(this.supabaseBucketName)
+        .upload(supabasePath, file.buffer, {
+          contentType: file.mimetype,
+          upsert: false,
+        });
+
+      if (uploadError)
+        throw new Error(`Supabase upload failed: ${uploadError.message}`);
+      if (!uploadData?.path)
+        throw new Error('Supabase upload failed: No path data returned.');
+
+      actualSupabasePath = uploadData.path; // Store the actual path
+      this.logger.info(
+        `[UploadService] File uploaded to Supabase path: ${actualSupabasePath}`,
+      );
+
+      // --- 2. Get Public URL/Marker ---
+      const { data: urlData } = supabase.storage
+        .from(this.supabaseBucketName)
+        .getPublicUrl(actualSupabasePath);
+      publicUrl = urlData?.publicUrl || `supabase_path:${actualSupabasePath}`;
+      this.logger.info(`[UploadService] Public URL/Path Marker: ${publicUrl}`);
+
+      // --- 3. Save Document Metadata to DB ---
+      const documentEntity = new DocumentEntity();
+      documentEntity.fileName = file.originalname;
+      documentEntity.fileUrl = publicUrl;
+      documentEntity.tenantId = tenantId;
+      // Note: We don't store valid_from/valid_until in the main DocumentEntity table here.
+      // They will live in the vector store metadata per chunk.
+      this.logger.info(
+        `[UploadService] Saving document metadata to database...`,
+      );
+      savedDocumentEntity = await this.documentRepository.save(documentEntity);
+      this.logger.info(
+        `[UploadService] Document metadata saved with ID: ${savedDocumentEntity.id}`,
+      );
+
+      // --- 4. Trigger Embedding Process ---
+      try {
+        this.logger.info(
+          `[UploadService] Preparing temp file for embedding (DB ID: ${savedDocumentEntity.id})...`,
+        );
+        tempFilePath = path.join(
+          os.tmpdir(),
+          `insightiq_temp_${savedDocumentEntity.id}_${Date.now()}${path.extname(file.originalname)}`,
+        );
+        await fs.writeFile(tempFilePath, file.buffer);
+        this.logger.info(`[UploadService] Temp file written: ${tempFilePath}`);
+
+        this.logger.info(
+          `[UploadService] Calling documentIngestionService.ingestDocument for doc ID: ${savedDocumentEntity.id}...`,
+        );
+
+        // --- Pass date info to ingestion service ---
+        await this.documentIngestionService.ingestDocument(
+          tempFilePath,
+          tenantId,
+          file.originalname,
+          {
+            // Metadata for vector store chunks
+            database_document_id: savedDocumentEntity.id.toString(),
+            supabase_path: actualSupabasePath,
+            original_filename: file.originalname,
+            valid_from: validFrom, // Pass the date string
+            valid_until: validUntil, // Pass the date string
+          },
+        );
+        this.logger.info(
+          `[UploadService] Embedding completed/initiated for doc ID: ${savedDocumentEntity.id}`,
+        );
+      } catch (embeddingError) {
+        this.logger.error(
+          `[UploadService] Embedding failed for doc ID ${savedDocumentEntity.id}:`,
+          { embeddingError },
+        );
+        // Decide handling policy (re-throw, log only, rollback?) - Re-throwing for now
+        throw embeddingError;
+      } finally {
+        // --- 5. Clean up temporary file ---
+        if (tempFilePath) {
+          try {
+            await fs.unlink(tempFilePath);
+            this.logger.info(
+              `[UploadService] Temp file deleted: ${tempFilePath}`,
+            );
+          } catch (unlinkError) {
+            this.logger.error(
+              `[UploadService] Error deleting temp file ${tempFilePath}:`,
+              { unlinkError },
+            );
+          }
+        }
+      }
+
+      // --- 6. Map to DTO and return ---
+      return this.mapDocumentEntityToDto(savedDocumentEntity); // Reuse your existing mapping function
+    } catch (error: any) {
+      // Catch errors from any step
+      this.logger.error('[UploadService] Overall error in uploadAndSave:', {
+        error: error.message,
+        stack: error.stack,
+      });
+
+      // --- Optional Rollback for Supabase File ---
+      if (
+        actualSupabasePath &&
+        !(error instanceof Error && error.message.includes('Embedding failed'))
+      ) {
+        // Attempt to delete the Supabase file if upload succeeded but a later step failed
+        // (Avoid deleting if the specific error was the embedding failure, as rollback might be complex)
+        try {
+          this.logger.warn(
+            `[UploadService] Rolling back Supabase upload due to error: deleting ${actualSupabasePath}`,
+          );
+          await supabase.storage
+            .from(this.supabaseBucketName)
+            .remove([actualSupabasePath]);
+        } catch (rollbackError) {
+          this.logger.error(
+            `[UploadService] Failed to rollback Supabase file deletion for ${actualSupabasePath}:`,
+            { rollbackError },
+          );
+        }
+      }
+      // --- Optional Rollback for DB Entry ---
+      // If DB entry was created but embedding failed, you might delete the DB entry here too.
+
+      throw error; // Re-throw the error for the controller
+    }
+  }
+
+  // mapDocumentEntityToDto method remains the same
   private mapDocumentEntityToDto(entity: DocumentEntity): DocumentDto {
-    // ... (mapping logic - assuming it's correct) ...
     const dto = new DocumentDto();
     dto.id = entity.id;
     dto.fileName = entity.fileName;
@@ -60,155 +215,6 @@ export class UploadDocumentService {
     dto.createdAt = entity.createdAt
       ? entity.createdAt.toISOString()
       : new Date().toISOString();
-    // dto.size = entity.size;
     return dto;
-  }
-
-  public async uploadAndSave(
-    file: Express.Multer.File,
-    tenantId: number,
-  ): Promise<DocumentDto> {
-    // --- Corrected Info Logging ---
-    this.logger.info(
-      `[UploadService] Starting upload & ingest process for tenant ${tenantId}, file: ${file.originalname}, size: ${file.size}`,
-    );
-
-    if (!file || !file.buffer) {
-      // --- Corrected Error Logging ---
-      this.logger.error('[UploadService] No file or file buffer provided.');
-      throw new Error('No file buffer provided for upload.');
-    }
-
-    const sanitizedOriginalName = file.originalname.replace(
-      /[^a-zA-Z0-9.\-_]/g,
-      '_',
-    );
-    const uniqueFileNameForPath = `${Date.now()}-${sanitizedOriginalName}`;
-    const supabasePath = uniqueFileNameForPath; // Your original path pattern
-
-    let publicUrl = '';
-    let savedDocumentEntity: DocumentEntity | null = null;
-    let tempFilePath: string | null = null;
-
-    try {
-      // --- 1. Upload to Supabase Storage ---
-      this.logger.info(
-        `[UploadService] Uploading to Supabase path: '${supabasePath}'`,
-      ); // .info()
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(this.supabaseBucketName)
-        .upload(supabasePath, file.buffer, {
-          contentType: file.mimetype,
-          upsert: false,
-        });
-
-      if (uploadError) {
-        // --- Corrected Error Logging ---
-        this.logger.error('[UploadService] Supabase storage upload error:', {
-          uploadError,
-        }); // .error()
-        throw new Error(`Supabase upload failed: ${uploadError.message}`);
-      }
-      if (!uploadData || !uploadData.path) {
-        // --- Corrected Error Logging ---
-        this.logger.error(
-          '[UploadService] Supabase upload returned no path data.',
-        ); // .error()
-        throw new Error('Supabase upload failed: No path data returned.');
-      }
-      const actualSupabasePath = uploadData.path;
-      this.logger.info(
-        `[UploadService] File uploaded successfully to Supabase path: ${actualSupabasePath}`,
-      ); // .info()
-
-      // --- 2. Get Public URL ---
-      const { data: urlData } = supabase.storage
-        .from(this.supabaseBucketName)
-        .getPublicUrl(actualSupabasePath);
-
-      publicUrl = urlData?.publicUrl || `supabase_path:${actualSupabasePath}`;
-      this.logger.info(`[UploadService] Public URL/Path Marker: ${publicUrl}`); // .info()
-
-      // --- 3. Save Document Entity to Database ---
-      const documentEntity = new DocumentEntity();
-      documentEntity.fileName = file.originalname;
-      documentEntity.fileUrl = publicUrl;
-      documentEntity.tenantId = tenantId;
-      // documentEntity.size = file.size;
-      // documentEntity.supabasePath = actualSupabasePath;
-
-      this.logger.info(
-        `[UploadService] Saving document metadata to database...`,
-      ); // .info()
-      savedDocumentEntity = await this.documentRepository.save(documentEntity);
-      this.logger.info(
-        `[UploadService] Document metadata saved with ID: ${savedDocumentEntity.id}`,
-      ); // .info()
-
-      // --- 4. Trigger Embedding Process ---
-      try {
-        this.logger.info(
-          `[UploadService] Preparing temporary file for embedding (DB ID: ${savedDocumentEntity.id})...`,
-        ); // .info()
-        tempFilePath = path.join(
-          os.tmpdir(),
-          `insightiq_temp_${savedDocumentEntity.id}_${Date.now()}${path.extname(file.originalname)}`,
-        );
-        await fs.writeFile(tempFilePath, file.buffer);
-        this.logger.info(
-          `[UploadService] Temporary file written to: ${tempFilePath}`,
-        ); // .info()
-
-        this.logger.info(
-          `[UploadService] Calling chatbotService.ingestDocument for document ID: ${savedDocumentEntity.id}...`,
-        ); // .info()
-        await this.chatbotService.ingestDocument(
-          tempFilePath,
-          tenantId,
-          file.originalname,
-          {
-            database_document_id: savedDocumentEntity.id.toString(),
-            supabase_path: actualSupabasePath,
-            original_filename: file.originalname,
-          },
-        );
-        this.logger.info(
-          `[UploadService] Embedding process completed (or initiated async) for document ID: ${savedDocumentEntity.id}`,
-        ); // .info()
-      } catch (embeddingError) {
-        // --- Corrected Error Logging ---
-        this.logger.error(
-          `[UploadService] Embedding failed for document ID ${savedDocumentEntity.id} (File: ${file.originalname}):`,
-          { embeddingError },
-        ); // .error()
-        // Decide on error handling policy
-      } finally {
-        // --- 5. Clean up the temporary file ---
-        if (tempFilePath) {
-          try {
-            await fs.unlink(tempFilePath);
-            this.logger.info(
-              `[UploadService] Temporary file deleted: ${tempFilePath}`,
-            ); // .info()
-          } catch (unlinkError) {
-            // --- Corrected Error Logging ---
-            this.logger.error(
-              `[UploadService] Error deleting temporary file ${tempFilePath}:`,
-              { unlinkError },
-            ); // .error()
-          }
-        }
-      }
-      // --- End Embedding Trigger ---
-
-      // --- 6. Map to DTO and return ---
-      return this.mapDocumentEntityToDto(savedDocumentEntity);
-    } catch (error) {
-      // --- Corrected Error Logging ---
-      this.logger.error('[UploadService] Overall error in uploadAndSave:', {
-        error,
-      }); // .error()
-      throw error;
-    }
   }
 }

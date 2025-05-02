@@ -1,4 +1,5 @@
 // src/socket.ts
+//npm install socket.io
 // import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';

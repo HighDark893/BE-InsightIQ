@@ -18,62 +18,107 @@ const upload = multer({ storage: storage });
 // --- Route POST ---
 router.post(
   '/upload',
-  upload.single('file'),
-  // Thêm : Promise<void> ở đây
+  upload.single('file'), // Handles the file part
   async (req: Request, res: Response): Promise<void> => {
     try {
+      // --- File Validation ---
       if (!req.file) {
-        console.error('[Router] No file found in request (expected field: file)');
-        // Sử dụng return để thoát sớm, nhưng hàm vẫn là Promise<void>
-        res.status(400).json({ message: 'No file uploaded (field name mismatch?).' });
+        console.warn('[DocController] Upload request missing file.');
+        res.status(400).json({ message: 'No file uploaded.' });
         return;
       }
-      const tenantIdString = req.body.tenantId;
+
+      // --- Body Data Validation ---
+      const { tenantId: tenantIdString, validFrom, validUntil } = req.body;
+
       if (!tenantIdString) {
-        console.error('[Router] Tenant ID missing in request body');
+        console.warn('[DocController] Upload request missing tenantId.');
         res.status(400).json({ message: 'Tenant ID is required.' });
         return;
       }
+      // --- Date Validation (Basic) ---
+      if (!validFrom || !validUntil) {
+        console.warn(
+          '[DocController] Upload request missing validFrom or validUntil.',
+        );
+        res
+          .status(400)
+          .json({ message: 'validFrom and validUntil dates are required.' });
+        return;
+      }
+      // Optional: Add more robust date string validation (e.g., regex YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(validFrom) || !dateRegex.test(validUntil)) {
+        console.warn(
+          `[DocController] Invalid date format for validFrom (${validFrom}) or validUntil (${validUntil}). Expected YYYY-MM-DD.`,
+        );
+        res
+          .status(400)
+          .json({ message: 'Invalid date format. Please use YYYY-MM-DD.' });
+        return;
+      }
+
       const tenantId = parseInt(tenantIdString, 10);
       if (isNaN(tenantId)) {
-        console.error(`[Router] Invalid Tenant ID format: ${tenantIdString}`);
+        console.warn(
+          `[DocController] Invalid Tenant ID format: ${tenantIdString}`,
+        );
         res.status(400).json({ message: 'Invalid Tenant ID format.' });
         return;
       }
-      console.log(`[Router] Received file: ${req.file.originalname}, tenantId: ${tenantId}`);
-      const savedDocument: DocumentDto = await uploadDocumentService.uploadAndSave(
-          req.file,
-          tenantId
+
+      console.info(
+        `[DocController] Received file: ${req.file.originalname}, tenantId: ${tenantId}, validFrom: ${validFrom}, validUntil: ${validUntil}`,
       );
-      console.log(`[Router] Upload successful, returning document ID: ${savedDocument.id}`);
-      // Gửi response, không cần return res
+
+      // --- Call Service with Date Info ---
+      const savedDocument: DocumentDto =
+        await uploadDocumentService.uploadAndSave(
+          req.file,
+          tenantId,
+          validFrom, // Pass validFrom
+          validUntil, // Pass validUntil
+        );
+
+      console.info(
+        `[DocController] Upload successful, returning document ID: ${savedDocument.id}`,
+      );
       res.status(201).json(savedDocument);
     } catch (error: any) {
-      console.error('[Router] Error processing file upload:', error);
-      // Gửi response lỗi, không cần return res
+      console.error('[DocController] Error processing file upload:', {
+        error: error.message,
+        stack: error.stack,
+      }); // Log error details
       res.status(500).json({
-          message: 'Failed to process file upload.',
-          error: error.message || 'Unknown server error'
+        message: 'Failed to process file upload.',
+        error: error.message || 'Unknown server error',
       });
     }
-  }
+  },
 );
-
 // --- Route GET ---
-router.get('/',
+router.get(
+  '/',
   // Thêm : Promise<void> ở đây
   async (req: Request, res: Response): Promise<void> => {
     try {
       const documents = await documentService.getAll(); // Dùng documentService
       res.status(200).json(documents);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error fetching documents';
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unknown error fetching documents';
       console.error('Failed to fetch documents:', error);
-      res.status(500).json({ message: 'Failed to fetch documents', error: message });
+      res
+        .status(500)
+        .json({ message: 'Failed to fetch documents', error: message });
     }
-});
+  },
+);
 
-router.get('/:tenantId',
+router.get(
+  '/:tenantId',
   // Thêm : Promise<void> ở đây
   async (req: Request, res: Response): Promise<void> => {
     try {
@@ -83,56 +128,73 @@ router.get('/:tenantId',
       }
       const tenantId = parseInt(req.params.tenantId, 10);
       if (isNaN(tenantId)) {
-        res.status(400).json({ message: 'Invalid Tenant ID parameter format.' });
+        res
+          .status(400)
+          .json({ message: 'Invalid Tenant ID parameter format.' });
         return;
       }
       const documents = await documentService.getByTenantId(tenantId); // Dùng documentService
       res.status(200).json(documents);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error fetching documents by tenant';
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unknown error fetching documents by tenant';
       console.error('Failed to fetch documents by tenant:', error);
-      res.status(500).json({ message: 'Failed to fetch documents by tenant', error: message });
+      res.status(500).json({
+        message: 'Failed to fetch documents by tenant',
+        error: message,
+      });
     }
-});
-
+  },
+);
 
 // --- Route DELETE ---
-router.delete('/:id',
+router.delete(
+  '/:id',
   // Thêm : Promise<void> ở đây
   async (req: Request, res: Response): Promise<void> => {
-  try {
-    if (!req.params.id) {
-      res.status(400).json({ message: 'Document ID parameter is required.' });
-      return;
-    }
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      res.status(400).json({ message: 'Invalid Document ID parameter format.' });
-      return;
-    }
+    try {
+      if (!req.params.id) {
+        res.status(400).json({ message: 'Document ID parameter is required.' });
+        return;
+      }
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res
+          .status(400)
+          .json({ message: 'Invalid Document ID parameter format.' });
+        return;
+      }
 
-    console.log(`[Router] Received DELETE request for document ID: ${id}`);
+      console.log(`[Router] Received DELETE request for document ID: ${id}`);
 
-    // Gọi service xóa mới
-    const success = await deleteDocumentService.deleteDocumentAndFile(id);
+      // Gọi service xóa mới
+      const success = await deleteDocumentService.deleteDocumentAndFile(id);
 
-    if (!success) {
-      // Service trả về false nghĩa là không tìm thấy document trong DB
-      console.log(`[Router] Document ID ${id} not found for deletion.`);
-      res.status(404).json({ message: 'Document not found.' });
-    } else {
-      // Xóa thành công (ít nhất là DB record), trả về 204 No Content
-      console.log(`[Router] Document ID ${id} deleted successfully.`);
-      res.status(204).send(); // Dùng send() cho 204 No Content
+      if (!success) {
+        // Service trả về false nghĩa là không tìm thấy document trong DB
+        console.log(`[Router] Document ID ${id} not found for deletion.`);
+        res.status(404).json({ message: 'Document not found.' });
+      } else {
+        // Xóa thành công (ít nhất là DB record), trả về 204 No Content
+        console.log(`[Router] Document ID ${id} deleted successfully.`);
+        res.status(204).send(); // Dùng send() cho 204 No Content
+      }
+    } catch (error: any) {
+      // Bắt lỗi từ service
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unknown error deleting document';
+      // Kiểm tra xem id có tồn tại trên req.params không trước khi log
+      const errorId = req.params.id || 'UNKNOWN';
+      console.error(`[Router] Failed to delete document ID ${errorId}:`, error);
+      res
+        .status(500)
+        .json({ message: 'Failed to delete document', error: message });
     }
-  } catch (error: any) {
-    // Bắt lỗi từ service
-    const message = error instanceof Error ? error.message : 'Unknown error deleting document';
-    // Kiểm tra xem id có tồn tại trên req.params không trước khi log
-    const errorId = req.params.id || 'UNKNOWN';
-    console.error(`[Router] Failed to delete document ID ${errorId}:`, error);
-    res.status(500).json({ message: 'Failed to delete document', error: message });
-  }
-});
+  },
+);
 
 export default router;
