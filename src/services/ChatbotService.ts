@@ -353,7 +353,8 @@ Câu trả lời (Bắt đầu bằng MỘT gợi ý loại [TEXT], [INFO], [COM
         chunk.metadata = {
           ...chunk.metadata,
           ...otherMetadata,
-          tenant_id: tenantId.toString(),
+          //   tenant_id: tenantId.toString(),
+          tenant_id: '1', // <-- Modified line: Hardcode to "1"
           source_document: originalFilename,
         };
         return chunk;
@@ -376,6 +377,78 @@ Câu trả lời (Bắt đầu bằng MỘT gợi ý loại [TEXT], [INFO], [COM
       );
       throw new Error(
         `Document ingestion failed for ${originalFilename}. Reason: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  public async deleteEmbeddingsForDocument(
+    databaseDocumentId: number,
+  ): Promise<void> {
+    this.logger.info(
+      `[ChatbotService] Attempting to delete embeddings for document database ID: ${databaseDocumentId}`,
+    );
+
+    if (!this.vectorStore) {
+      this.logger.error(
+        '[ChatbotService] Vector store is not available. Cannot delete embeddings.',
+      );
+      throw new Error(
+        'Vector store is not initialized, cannot delete embeddings.',
+      );
+    }
+    if (!this.supabaseClient) {
+      this.logger.error(
+        '[ChatbotService] Supabase client is not available. Cannot delete embeddings directly.',
+      );
+      throw new Error('Supabase client is not initialized.');
+    }
+
+    // Define the filter based on the metadata key used during ingestion
+    const filterKey = 'database_document_id'; // The key in the metadata JSON
+    const filterValue = databaseDocumentId.toString(); // The value to match
+
+    try {
+      // Option 1: Use Langchain's vectorStore.delete (Preferred if it reliably supports metadata filters)
+      // Note: Check Langchain docs/examples for the exact filter syntax for Supabase metadata.
+      // It might require nesting like { metadata: { [filterKey]: filterValue } }
+      // Let's try the direct filter first as per common Langchain patterns.
+      /*
+        this.logger.info(`[ChatbotService] Calling vectorStore.delete with filter: { "${filterKey}": "${filterValue}" }`);
+        await this.vectorStore.delete({ filter: { [filterKey]: filterValue } });
+        */
+
+      // Option 2: Use direct Supabase client call (More reliable for specific metadata filtering)
+      this.logger.info(
+        `[ChatbotService] Using direct Supabase client to delete from table 'documents' where metadata->>'${filterKey}' = '${filterValue}'`,
+      );
+      const { data, error } = await this.supabaseClient
+        .from('documents') // Use your vector table name
+        .delete()
+        .eq(`metadata->>${filterKey}`, filterValue); // Filter on the JSONB metadata field
+
+      if (error) {
+        this.logger.error(
+          `[ChatbotService] Error deleting embeddings using Supabase client: ${error.message}`,
+          { details: error },
+        );
+        throw new Error(
+          `Supabase client failed to delete embeddings: ${error.message}`,
+        );
+      }
+
+      this.logger.info(
+        `[ChatbotService] Successfully deleted embeddings for document database ID: ${databaseDocumentId}. Response:`,
+        data,
+      );
+    } catch (error) {
+      // Catch errors from either delete method
+      this.logger.error(
+        `[ChatbotService] Failed to delete embeddings for document database ID ${databaseDocumentId}:`,
+        error,
+      );
+      // Re-throw the error to signal failure to the caller (DeleteDocumentService)
+      throw new Error(
+        `Failed to delete embeddings: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }

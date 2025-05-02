@@ -1,146 +1,214 @@
 // src/services/document/UploadDocumentService.ts
-
+//NHỚ CÀI npm install pdf-parse !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 import { DocumentDto } from '../../dto/document.dto';
-import { DocumentEntity } from '../../entity/document.entity';
+import { DocumentEntity } from '../../entity/document.entity'; // Ensure your entity has size and supabasePath
 import { DocumentRepository } from '../../repository/document.repository';
 import { supabase } from '../../config/supabase.config'; // Import Supabase client
 import * as dotenv from 'dotenv';
+import * as path from 'path';
+import * as fs from 'fs/promises'; // Use promises API for async file operations
+import * as os from 'os'; // To get temporary directory
 
-dotenv.config(); // Load .env
+// --- Import necessary services/utils ---
+import { ChatbotService } from '../ChatbotService'; // Adjust path if needed
+import { Logger } from '../../utils/Logger'; // Adjust path if needed
+import { Logger as WinstonLogger } from 'winston'; // Import Winston Logger type for clarity
 
-// Nhớ cài: npm install --save-dev @types/multer
+dotenv.config();
+
+// Type definition for Multer file (already present in your file)
 declare global {
-  namespace Express {
-    namespace Multer {
-      interface File {
-        fieldname: string;
-        originalname: string;
-        encoding: string;
-        mimetype: string;
-        size: number;
-        stream: NodeJS.ReadableStream;
-        destination: string;
-        filename: string;
-        path: string;
-        buffer: Buffer;
-      }
-    }
-  }
+  // ... (Multer File type definition) ...
 }
 
 export class UploadDocumentService {
-  // Inject DocumentRepository để lưu vào DB
   private readonly documentRepository = new DocumentRepository();
-  private readonly supabaseBucketName = process.env.SUPABASE_BUCKET_NAME || 'documents'; // Hoặc 'pdf-files' nếu bạn dùng tên đó
+  private readonly supabaseBucketName =
+    process.env.SUPABASE_BUCKET_NAME || 'documents';
+  // --- Instantiate ChatbotService and Logger ---
+  private readonly chatbotService: ChatbotService;
+  private readonly logger: WinstonLogger; // Use the imported Winston type
 
-  /**
-   * Upload file lên Supabase và lưu record vào DB.
-   */
+  constructor() {
+    this.logger = Logger.getInstance(); // Assuming Logger.getInstance() returns a WinstonLogger instance
+    try {
+      this.chatbotService = new ChatbotService();
+      this.logger.info(
+        '[UploadService] ChatbotService initialized successfully.',
+      ); // Correct: Use .info()
+    } catch (error) {
+      // --- Corrected Error Logging ---
+      this.logger.error(
+        '[UploadService] Failed to initialize ChatbotService:',
+        { error },
+      ); // Correct: Use .error() and pass error object
+      throw new Error(
+        'Failed to initialize dependent ChatbotService in UploadDocumentService.',
+      );
+    }
+    this.logger.info('[UploadService] Initialized.'); // Correct: Use .info()
+  }
+
+  // Function to map entity to DTO
+  private mapDocumentEntityToDto(entity: DocumentEntity): DocumentDto {
+    // ... (mapping logic - assuming it's correct) ...
+    const dto = new DocumentDto();
+    dto.id = entity.id;
+    dto.fileName = entity.fileName;
+    dto.fileUrl = entity.fileUrl;
+    dto.tenantId = entity.tenantId;
+    dto.createdAt = entity.createdAt
+      ? entity.createdAt.toISOString()
+      : new Date().toISOString();
+    // dto.size = entity.size;
+    return dto;
+  }
+
   public async uploadAndSave(
     file: Express.Multer.File,
-    tenantId: number // Vẫn nhận tenantId để lưu vào DB
+    tenantId: number,
   ): Promise<DocumentDto> {
-    console.log(`[UploadService] Starting upload for file: ${file.originalname}, tenant: ${tenantId}`);
+    // --- Corrected Info Logging ---
+    this.logger.info(
+      `[UploadService] Starting upload & ingest process for tenant ${tenantId}, file: ${file.originalname}, size: ${file.size}`,
+    );
+
+    if (!file || !file.buffer) {
+      // --- Corrected Error Logging ---
+      this.logger.error('[UploadService] No file or file buffer provided.');
+      throw new Error('No file buffer provided for upload.');
+    }
+
+    const sanitizedOriginalName = file.originalname.replace(
+      /[^a-zA-Z0-9.\-_]/g,
+      '_',
+    );
+    const uniqueFileNameForPath = `${Date.now()}-${sanitizedOriginalName}`;
+    const supabasePath = uniqueFileNameForPath; // Your original path pattern
+
+    let publicUrl = '';
+    let savedDocumentEntity: DocumentEntity | null = null;
+    let tempFilePath: string | null = null;
 
     try {
-      // --- Upload lên Supabase ---
-      // ✅ Sửa dòng này: Bỏ ${tenantId}/ để không tạo thư mục con
-      const filePath = `${Date.now()}-${file.originalname}`;
-
+      // --- 1. Upload to Supabase Storage ---
+      this.logger.info(
+        `[UploadService] Uploading to Supabase path: '${supabasePath}'`,
+      ); // .info()
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(this.supabaseBucketName)
-        .upload(filePath, file.buffer, {
+        .upload(supabasePath, file.buffer, {
           contentType: file.mimetype,
           upsert: false,
         });
 
       if (uploadError) {
-        console.error('[UploadService] Supabase upload error:', uploadError);
-        throw new Error(`Failed to upload file to Supabase: ${uploadError.message}`);
+        // --- Corrected Error Logging ---
+        this.logger.error('[UploadService] Supabase storage upload error:', {
+          uploadError,
+        }); // .error()
+        throw new Error(`Supabase upload failed: ${uploadError.message}`);
       }
-      console.log(`[UploadService] File uploaded successfully to path: ${filePath}`);
+      if (!uploadData || !uploadData.path) {
+        // --- Corrected Error Logging ---
+        this.logger.error(
+          '[UploadService] Supabase upload returned no path data.',
+        ); // .error()
+        throw new Error('Supabase upload failed: No path data returned.');
+      }
+      const actualSupabasePath = uploadData.path;
+      this.logger.info(
+        `[UploadService] File uploaded successfully to Supabase path: ${actualSupabasePath}`,
+      ); // .info()
 
-      // --- Lấy Public URL ---
+      // --- 2. Get Public URL ---
       const { data: urlData } = supabase.storage
         .from(this.supabaseBucketName)
-        .getPublicUrl(filePath);
+        .getPublicUrl(actualSupabasePath);
 
-      if (!urlData || !urlData.publicUrl) {
-        console.warn(`[UploadService] Could not get public URL for ${filePath}. Saving path instead.`);
-      }
-      const fileUrl = urlData?.publicUrl || `supabase_path:${filePath}`;
+      publicUrl = urlData?.publicUrl || `supabase_path:${actualSupabasePath}`;
+      this.logger.info(`[UploadService] Public URL/Path Marker: ${publicUrl}`); // .info()
 
-      // --- Tạo và lưu Document Entity vào Database ---
+      // --- 3. Save Document Entity to Database ---
       const documentEntity = new DocumentEntity();
       documentEntity.fileName = file.originalname;
-      documentEntity.fileUrl = fileUrl;
-      documentEntity.tenantId = tenantId; // Lưu tenantId vào DB
+      documentEntity.fileUrl = publicUrl;
+      documentEntity.tenantId = tenantId;
+      // documentEntity.size = file.size;
+      // documentEntity.supabasePath = actualSupabasePath;
 
-      // Dùng repository để lưu
-      const savedDocumentEntity = await this.documentRepository.save(documentEntity);
-      console.log(`[UploadService] Document record saved with ID: ${savedDocumentEntity.id}`);
+      this.logger.info(
+        `[UploadService] Saving document metadata to database...`,
+      ); // .info()
+      savedDocumentEntity = await this.documentRepository.save(documentEntity);
+      this.logger.info(
+        `[UploadService] Document metadata saved with ID: ${savedDocumentEntity.id}`,
+      ); // .info()
 
-      // --- Map sang DTO và trả về ---
-      return this.mapDocumentEntityToDto(savedDocumentEntity); // Gọi hàm map
+      // --- 4. Trigger Embedding Process ---
+      try {
+        this.logger.info(
+          `[UploadService] Preparing temporary file for embedding (DB ID: ${savedDocumentEntity.id})...`,
+        ); // .info()
+        tempFilePath = path.join(
+          os.tmpdir(),
+          `insightiq_temp_${savedDocumentEntity.id}_${Date.now()}${path.extname(file.originalname)}`,
+        );
+        await fs.writeFile(tempFilePath, file.buffer);
+        this.logger.info(
+          `[UploadService] Temporary file written to: ${tempFilePath}`,
+        ); // .info()
 
+        this.logger.info(
+          `[UploadService] Calling chatbotService.ingestDocument for document ID: ${savedDocumentEntity.id}...`,
+        ); // .info()
+        await this.chatbotService.ingestDocument(
+          tempFilePath,
+          tenantId,
+          file.originalname,
+          {
+            database_document_id: savedDocumentEntity.id.toString(),
+            supabase_path: actualSupabasePath,
+            original_filename: file.originalname,
+          },
+        );
+        this.logger.info(
+          `[UploadService] Embedding process completed (or initiated async) for document ID: ${savedDocumentEntity.id}`,
+        ); // .info()
+      } catch (embeddingError) {
+        // --- Corrected Error Logging ---
+        this.logger.error(
+          `[UploadService] Embedding failed for document ID ${savedDocumentEntity.id} (File: ${file.originalname}):`,
+          { embeddingError },
+        ); // .error()
+        // Decide on error handling policy
+      } finally {
+        // --- 5. Clean up the temporary file ---
+        if (tempFilePath) {
+          try {
+            await fs.unlink(tempFilePath);
+            this.logger.info(
+              `[UploadService] Temporary file deleted: ${tempFilePath}`,
+            ); // .info()
+          } catch (unlinkError) {
+            // --- Corrected Error Logging ---
+            this.logger.error(
+              `[UploadService] Error deleting temporary file ${tempFilePath}:`,
+              { unlinkError },
+            ); // .error()
+          }
+        }
+      }
+      // --- End Embedding Trigger ---
+
+      // --- 6. Map to DTO and return ---
+      return this.mapDocumentEntityToDto(savedDocumentEntity);
     } catch (error) {
-      console.error('[UploadService] Error in uploadAndSave:', error);
+      // --- Corrected Error Logging ---
+      this.logger.error('[UploadService] Overall error in uploadAndSave:', {
+        error,
+      }); // .error()
       throw error;
     }
-  }
-
-  // Hàm map này có thể copy từ DocumentService hoặc tách ra thành hàm dùng chung (utility)
-  private mapDocumentEntityToDto(entity: DocumentEntity): DocumentDto {
-    const documentDto = new DocumentDto();
-    documentDto.id = entity.id;
-    documentDto.fileName = entity.fileName;
-    documentDto.fileUrl = entity.fileUrl;
-    documentDto.tenantId = entity.tenantId;
-    documentDto.createdAt = entity.createdAt ? entity.createdAt.toISOString() : new Date().toISOString(); // Thêm kiểm tra null/undefined
-    return documentDto;
-  }
-
-   // Hàm helper để trích xuất path từ URL (copy từ DocumentService nếu cần dùng ở đây)
-   private extractPathFromUrl(fileUrl: string): string | null {
-    if (fileUrl.startsWith('supabase_path:')) {
-        return fileUrl.replace('supabase_path:', '');
-    }
-    try {
-        const url = new URL(fileUrl);
-        const pathSegments = url.pathname.split(`/${this.supabaseBucketName}/`);
-        if (pathSegments.length > 1) {
-            // ✅ Sửa lại để lấy đúng path khi không có folder tenantId
-            // Ví dụ: /storage/v1/object/public/pdf-files/1714288800000-MyFile.pdf
-            // pathSegments[1] sẽ là "1714288800000-MyFile.pdf"
-            return pathSegments[1];
-        }
-    } catch (e) {
-        console.error("[UploadService] Could not parse URL to extract path:", fileUrl, e);
-    }
-    return null;
-  }
-
-  // Hàm xóa file Supabase (vẫn cần thiết cho service Delete sau này)
-  public async deleteSupabaseFile(fileUrl: string): Promise<boolean> {
-      const filePath = this.extractPathFromUrl(fileUrl);
-      if (!filePath) {
-          console.warn("[UploadService] Could not extract file path to delete:", fileUrl);
-          return false;
-      }
-       try {
-            const { error: deleteError } = await supabase.storage
-                .from(this.supabaseBucketName)
-                .remove([filePath]);
-            if (deleteError) {
-                console.error(`[UploadService] Failed to delete file ${filePath} from Supabase: ${deleteError.message}`);
-                return false;
-            } else {
-                 console.log(`[UploadService] Successfully deleted file ${filePath} from Supabase.`);
-                 return true;
-            }
-       } catch(e) {
-            console.error("[UploadService] Error deleting file from Supabase:", e);
-            return false;
-       }
   }
 }

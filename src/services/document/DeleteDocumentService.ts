@@ -1,95 +1,163 @@
 // src/services/document/DeleteDocumentService.ts
 
 import { DocumentRepository } from '../../repository/document.repository';
-import { supabase } from '../../config/supabase.config'; // Import Supabase client
+import { supabase } from '../../config/supabase.config';
 import * as dotenv from 'dotenv';
+import { ChatbotService } from '../ChatbotService'; // <-- Import ChatbotService
 
 dotenv.config(); // Load .env
 
 export class DeleteDocumentService {
-    private readonly documentRepository = new DocumentRepository();
-    private readonly supabaseBucketName = process.env.SUPABASE_BUCKET_NAME || 'documents'; // Đảm bảo tên bucket đúng
+  private readonly documentRepository = new DocumentRepository();
+  private readonly chatbotService: ChatbotService; // <-- Add ChatbotService instance variable
+  private readonly supabaseBucketName =
+    process.env.SUPABASE_BUCKET_NAME || 'documents';
 
-    /**
-     * Xóa document khỏi Supabase và Database.
-     * @param id ID của document cần xóa trong Database.
-     * @returns boolean: true nếu xóa thành công (ít nhất là xóa khỏi DB), false nếu không tìm thấy document.
-     * @throws Error nếu có lỗi trong quá trình xóa file Supabase hoặc xóa DB.
-     */
-    public async deleteDocumentAndFile(id: number): Promise<boolean> {
-        console.log(`[DeleteService] Attempting to delete document with ID: ${id}`);
+  constructor() {
+    // Instantiate ChatbotService - Consider using dependency injection if your framework supports it
+    try {
+      this.chatbotService = new ChatbotService();
+      console.log('[DeleteService] ChatbotService instantiated successfully.');
+    } catch (error) {
+      console.error(
+        '[DeleteService] Failed to instantiate ChatbotService:',
+        error,
+      );
+      // If ChatbotService is essential for deletion, throw error to prevent service start/use
+      throw new Error(
+        'DeleteDocumentService could not initialize ChatbotService.',
+      );
+    }
+  }
 
-        // 1. Tìm Document trong Database để lấy fileUrl
-        const documentEntity = await this.documentRepository.findById(id);
-        if (!documentEntity) {
-            console.warn(`[DeleteService] Document with ID ${id} not found in database.`);
-            return false; // Không tìm thấy document
+  /**
+   * Deletes a document file, its embeddings, and its database record.
+   * Throws an error if any critical step fails (file delete, embedding delete, DB delete),
+   * ensuring consistency.
+   * @param id The ID of the document record in the database.
+   * @returns boolean: true if all steps were completed successfully.
+   * @throws Error if the document is not found or any deletion step fails.
+   */
+  public async deleteDocumentAndFile(id: number): Promise<boolean> {
+    console.log(
+      `[DeleteService] Initiating deletion for document ID: ${id} (File, Embeddings, DB Record)`,
+    );
+
+    // 1. Find Document in Database
+    const documentEntity = await this.documentRepository.findById(id);
+    if (!documentEntity) {
+      console.warn(
+        `[DeleteService] Document with ID ${id} not found in database.`,
+      );
+      return false; // Or throw new Error(`Document with ID ${id} not found.`)
+    }
+    console.log(
+      `[DeleteService] Found document record: ${documentEntity.fileName}, URL: ${documentEntity.fileUrl}`,
+    );
+
+    // --- Start Transaction-like Sequence (if one fails, stop) ---
+
+    // 2. Attempt to delete file from Supabase Storage
+    const encodedFilePath = this.extractPathFromUrl(documentEntity.fileUrl);
+    if (encodedFilePath) {
+      let decodedFilePath: string = ''; // Initialize outside try
+      try {
+        decodedFilePath = decodeURIComponent(encodedFilePath);
+        console.log(
+          `[DeleteService] Decoded path for Supabase file deletion: ${decodedFilePath}`,
+        );
+        const { error: deleteError } = await supabase.storage
+          .from(this.supabaseBucketName)
+          .remove([decodedFilePath]);
+
+        if (deleteError) {
+          console.error(
+            `[DeleteService] Failed to delete file '${decodedFilePath}' from Supabase bucket '${this.supabaseBucketName}': ${deleteError.message}`,
+          );
+          throw new Error(
+            `Failed to delete file from Supabase storage: ${deleteError.message}`,
+          );
         }
-
-        console.log(`[DeleteService] Found document: ${documentEntity.fileName}, URL: ${documentEntity.fileUrl}`);
-
-        // 2. Xóa file khỏi Supabase Storage (nếu có fileUrl hợp lệ)
-        let supabaseDeleteSuccess = true; // Mặc định là true nếu không cần xóa hoặc xóa thành công
-        const filePath = this.extractPathFromUrl(documentEntity.fileUrl);
-
-        if (filePath) {
-            console.log(`[DeleteService] Extracted Supabase path: ${filePath}. Attempting deletion...`);
-            try {
-                const { error: deleteError } = await supabase.storage
-                    .from(this.supabaseBucketName)
-                    .remove([filePath]); // Truyền vào một mảng các path
-
-                if (deleteError) {
-                    // Ghi log lỗi nhưng không chặn việc xóa DB (tùy vào yêu cầu nghiệp vụ)
-                    // Nếu muốn dừng lại khi không xóa được file, hãy throw error ở đây
-                    console.error(`[DeleteService] Failed to delete file ${filePath} from Supabase: ${deleteError.message}`);
-                    supabaseDeleteSuccess = false;
-                    // throw new Error(`Failed to delete file from Supabase: ${deleteError.message}`); // Bỏ comment nếu muốn dừng lại
-                } else {
-                    console.log(`[DeleteService] Successfully deleted file ${filePath} from Supabase.`);
-                }
-            } catch (e) {
-                console.error("[DeleteService] Error during Supabase file deletion:", e);
-                supabaseDeleteSuccess = false;
-                // throw e; // Bỏ comment nếu muốn dừng lại
-            }
-        } else {
-            console.warn(`[DeleteService] Could not extract Supabase path from URL: ${documentEntity.fileUrl}. Skipping Supabase deletion.`);
-            // Có thể fileUrl không phải từ Supabase hoặc đã bị lỗi trước đó
-        }
-
-        // 3. Xóa record khỏi Database
-        try {
-            await this.documentRepository.remove(documentEntity);
-            console.log(`[DeleteService] Successfully deleted document record with ID: ${id} from database.`);
-            // Trả về true ngay cả khi Supabase delete không thành công (nhưng đã log lỗi)
-            // Thay đổi logic này nếu bạn muốn chỉ trả về true khi cả hai đều thành công.
-            return true;
-        } catch (dbError) {
-             console.error(`[DeleteService] Error deleting document record with ID ${id} from database:`, dbError);
-             throw dbError; // Ném lỗi để controller xử lý
-        }
+        console.log(
+          `[DeleteService] Successfully deleted file '${decodedFilePath}' from Supabase storage.`,
+        );
+      } catch (e: any) {
+        console.error(
+          `[DeleteService] Error during Supabase file deletion for path '${decodedFilePath || encodedFilePath}':`,
+          e,
+        );
+        throw e; // Re-throw to stop the process
+      }
+    } else {
+      console.warn(
+        `[DeleteService] No valid Supabase path extracted from URL: ${documentEntity.fileUrl}. Skipping file deletion.`,
+      );
     }
 
-    // Hàm helper để trích xuất path từ URL (giống trong UploadDocumentService)
-    private extractPathFromUrl(fileUrl: string): string | null {
-        if (!fileUrl) return null;
-        // Nếu lưu path trực tiếp (phòng trường hợp getPublicUrl lỗi)
-        if (fileUrl.startsWith('supabase_path:')) {
-            return fileUrl.replace('supabase_path:', '');
-        }
-        try {
-            const url = new URL(fileUrl);
-            // Tách path dựa trên tên bucket
-            // Ví dụ: /storage/v1/object/public/documents/some-file.pdf
-            const pathSegments = url.pathname.split(`/${this.supabaseBucketName}/`);
-            if (pathSegments.length > 1) {
-                // Lấy phần sau tên bucket
-                return pathSegments[1];
-            }
-        } catch (e) {
-            console.error("[DeleteService] Could not parse URL to extract path:", fileUrl, e);
-        }
+    // --- 3. Attempt to Delete Embeddings from Vector Store ---
+    try {
+      console.log(
+        `[DeleteService] Attempting to delete embeddings via ChatbotService for document ID: ${id}`,
+      );
+      await this.chatbotService.deleteEmbeddingsForDocument(id); // Call the new method
+      console.log(
+        `[DeleteService] Successfully requested embedding deletion for document ID: ${id}`,
+      );
+    } catch (embeddingError) {
+      console.error(
+        `[DeleteService] Error deleting embeddings for document ID ${id}:`,
+        embeddingError,
+      );
+      // Throw error to stop the process if embeddings can't be deleted
+      // This prevents deleting the DB record if embeddings remain.
+      throw new Error(
+        `Failed to delete associated embeddings: ${embeddingError instanceof Error ? embeddingError.message : 'Unknown vector store error'}`,
+      );
+    }
+
+    // 4. Delete record from Database (Only runs if prior steps succeeded)
+    try {
+      await this.documentRepository.remove(documentEntity);
+      console.log(
+        `[DeleteService] Successfully deleted document record with ID: ${id} from database.`,
+      );
+      console.log(`[DeleteService] Deletion complete for document ID: ${id}`);
+      return true; // Indicate overall success
+    } catch (dbError) {
+      console.error(
+        `[DeleteService] Error deleting document record with ID ${id} from database (after successful file/embedding deletion):`,
+        dbError,
+      );
+      // This indicates an inconsistency state, but the error should be propagated.
+      throw dbError;
+    }
+  }
+
+  // ... extractPathFromUrl method remains the same ...
+  private extractPathFromUrl(fileUrl: string): string | null {
+    // ... (existing implementation) ...
+    if (!fileUrl) return null;
+    if (fileUrl.startsWith('supabase_path:')) {
+      return fileUrl.replace('supabase_path:', '');
+    }
+    try {
+      const url = new URL(fileUrl);
+      const pathSegments = url.pathname.split(`/${this.supabaseBucketName}/`);
+      if (pathSegments.length > 1) {
+        return pathSegments[1];
+      } else {
+        console.warn(
+          `[DeleteService ExtractPath] Could not find bucket name '${this.supabaseBucketName}' in pathname: ${url.pathname}`,
+        );
         return null;
+      }
+    } catch (e) {
+      console.error(
+        '[DeleteService ExtractPath] Could not parse URL:',
+        fileUrl,
+        e,
+      );
+      return null;
     }
+  }
 }
