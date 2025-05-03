@@ -7,7 +7,7 @@ import { requireAuthentication, authorize } from '../middleware/auth.middleware'
 const router = Router();
 const messageService = new MessageService();
 
-router.post('/', requireAuthentication, authorize(['TENANT']), async (req: Request, res: Response) => {
+router.post('/', requireAuthentication, authorize(['TENANT', 'USERCHATBOT']), async (req: Request, res: Response) => {
   try {
     const createMessageDto = new CreateMessageDto();
 
@@ -22,7 +22,7 @@ router.post('/', requireAuthentication, authorize(['TENANT']), async (req: Reque
   }
 });
 
-router.get('/', requireAuthentication, authorize(['TENANT']), async (req: Request, res: Response) => {
+router.get('/', requireAuthentication, authorize(['TENANT', 'USERCHATBOT']), async (req: Request, res: Response) => {
   try {
     const messages = await messageService.getAll();
     res.status(200).json(messages);
@@ -31,7 +31,7 @@ router.get('/', requireAuthentication, authorize(['TENANT']), async (req: Reques
   }
 });
 
-router.get('/:chatSessionId', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), async (req: Request, res: Response) => {
+router.get('/:chatSessionId', requireAuthentication, authorize(['SUPERADMIN', 'TENANT', 'USERCHATBOT']), async (req: Request, res: Response) => {
   try {
     const chatSessionId = parseInt(req.params.chatSessionId);
     const messageDto = await messageService.getByChatSessionId(chatSessionId);

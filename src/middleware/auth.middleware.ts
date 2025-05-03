@@ -1,8 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import { dataSource } from '../config/database.config';
-import { UserEntity } from '../entity/user.entity';
-import { UserService } from '../services/UserService';
 
 interface AuthRequest extends Request {
   user?: any;
@@ -55,8 +52,12 @@ export const authorize = (roles: string[]) => {
 };
 
 export const getUserInfo = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  req.body = req.user;
-  next();
+  try {
+    req.body = req.user;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
 }
 
 function isTokenExpired(token: string): boolean {

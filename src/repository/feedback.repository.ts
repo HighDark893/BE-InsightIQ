@@ -19,6 +19,12 @@ export class FeedbackRepository {
     });
   }
 
+  public async findByMessageId(messageId: number): Promise<FeedbackEntity | null> {
+    return await this.feedbackRepository.findOne({
+      where: { messageId: messageId },
+    });
+  }
+
   public async remove(feedback: FeedbackEntity): Promise<FeedbackEntity> {
     return await this.feedbackRepository.remove(feedback);
   }

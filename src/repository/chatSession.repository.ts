@@ -22,6 +22,12 @@ export class ChatSessionRepository {
     });
   }
 
+  public async findByTenantId(tenantId: number): Promise<ChatSessionEntity[]> {
+    return await this.chatSessionRepository.find({
+      where: { tenantId: tenantId },
+    });
+  }
+
   public async remove(entity: ChatSessionEntity): Promise<ChatSessionEntity> {
     return await this.chatSessionRepository.remove(entity);
   }

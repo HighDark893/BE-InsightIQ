@@ -2,9 +2,16 @@ import { FeedbackDto } from '../dto/feedback.dto';
 import { CreateFeedbackDto } from '../dto/createFeedback.dto';
 import { FeedbackEntity } from '../entity/feedback.entity';
 import { FeedbackRepository } from '../repository/feedback.repository';
+import { TenantRepository } from '../repository/tenant.repository';
+import { RatingCountDto } from '../dto/ratingCount.dto';
+import { ChatSessionRepository } from '../repository/chatSession.repository';
+import { MessageRepository } from '../repository/message.repository';
 
 export class FeedbackService {
   private readonly feedbackRepository = new FeedbackRepository();
+  private readonly tenantRepository = new TenantRepository();
+  private readonly chatSessionRepository = new ChatSessionRepository();
+  private readonly messagesRepository = new MessageRepository();
 
   public async create(
     createFeedbackDto: CreateFeedbackDto,
@@ -49,8 +56,46 @@ export class FeedbackService {
       return false;
     }
 
-    this.feedbackRepository.remove(feedbackEntity);
+    await this.feedbackRepository.remove(feedbackEntity);
     return true;
+  }
+
+  public async countRatingByTenantId(tenantId: number) {
+    const tenantEntity = await this.tenantRepository.getTenantById(tenantId);
+
+    if(!tenantEntity){
+      return null;
+    }
+
+    const chatSessions = await this.chatSessionRepository.findByTenantId(tenantId);
+
+    let positiveRatingCount = 0;
+    let negativeRatingCount = 0;
+
+    for (const cs of chatSessions) {
+      const messages = await this.messagesRepository.findByChatSessionId(cs.id);
+
+      for (const m of messages) {
+        const feedback = await this.feedbackRepository.findByMessageId(m.id);
+
+        if(!feedback){
+          break;
+        }
+
+        if (feedback.rating === 'Positive') {
+          positiveRatingCount++;
+        } else if (feedback.rating === 'Negative') {
+          negativeRatingCount++;
+        }
+      }
+    }
+
+    const ratingCount = new RatingCountDto();
+
+    ratingCount.positive = positiveRatingCount;
+    ratingCount.negative = negativeRatingCount;
+
+    return ratingCount;
   }
 
   private mapFeedbackEntityToDto(entity: FeedbackEntity): FeedbackDto {

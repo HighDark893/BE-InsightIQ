@@ -10,6 +10,9 @@ import authController from './controller/AuthController';
 import cookieParser from 'cookie-parser';
 import messageController from './controller/MessageController';
 import chatSessionController from './controller/ChatSessionController';
+import userChatbotController from './controller/UserChatbotController';
+import feedbackController from './controller/FeedbackController';
+import documentController from './controller/DocumentController';
 
 
 dataSource
@@ -30,9 +33,12 @@ app.use(LoggerMiddleware.logResponseTime)
 app.use('/proxy', proxyController);
 app.use('/user', userController);
 app.use('/superadmin', superAdminController);
+app.use('/user_chatbot', userChatbotController);
 app.use('/tenant', tenantController);
 app.use('/auth', authController);
 app.use('/message', messageController);
 app.use('/chat_session', chatSessionController);
+app.use('/feedback', feedbackController);
+app.use('/document', documentController);
 
 export default app;

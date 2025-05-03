@@ -7,7 +7,7 @@ import { authorize, requireAuthentication } from '../middleware/auth.middleware'
 const router = Router();
 const feedbackService = new FeedbackService();
 
-router.post('/', requireAuthentication, async (req: Request, res: Response) => {
+router.post('/', requireAuthentication, authorize(['USERCHATBOT']), async (req: Request, res: Response) => {
   try {
     const createFeedbackDto = new CreateFeedbackDto();
 
@@ -31,18 +31,18 @@ router.get('/', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), asyn
   }
 });
 
-router.get('/:id', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), async (req: Request, res: Response) => {
+router.get('/:id', requireAuthentication, authorize(['SUPERADMIN', 'TENANT', 'USERCHATBOT']), async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const feedback = await feedbackService.getById(id);
 
-    res.json(feedback);
+    res.status(200).json(feedback);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch feedback', error });
   }
 });
 
-router.delete('/:id', requireAuthentication, authorize(['TENANT']), async (req: Request, res: Response) => {
+router.delete('/:id', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const success = await feedbackService.delete(id);
@@ -55,5 +55,16 @@ router.delete('/:id', requireAuthentication, authorize(['TENANT']), async (req: 
     res.status(500).json({ message: 'Failed to delete feedback', error });
   }
 });
+
+router.get('/summary/:tenantId', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), async (req: Request, res: Response) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId);
+    const ratingCount = await feedbackService.countRatingByTenantId(tenantId);
+
+    res.status(200).json(ratingCount);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch ratings amount', error });
+  }
+})
 
 export default router;

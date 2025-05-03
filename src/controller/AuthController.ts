@@ -1,5 +1,6 @@
 import { Request, Response, Router } from "express";
 import { AuthService } from '../services/AuthService';
+import { requireAuthentication } from '../middleware/auth.middleware';
 
 
 
@@ -22,6 +23,15 @@ router.post('/login', async (req: Request, res: Response) => {
     res.status(500).json({message: 'Failed to login', error});
   }
 });
+
+router.post('/logout', requireAuthentication, async (req: Request, res: Response) => {
+  try {
+    res.clearCookie('auth_token');
+    res.status(200).json({message: 'Successfully logged out'});
+  } catch (error) {
+    res.status(500).json({message: 'Failed to logout', error});
+  }
+})
 
 
 export default router;

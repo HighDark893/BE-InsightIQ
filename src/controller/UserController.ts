@@ -8,7 +8,7 @@ const router = Router();
 const userService = new UserService();
 const logger = Logger.getInstance();
 
-router.post('/create', requireAuthentication, async (req: Request, res: Response) => {
+router.post('/create', async (req: Request, res: Response) => {
   try {
     const userDto: UserDto = req.body;
     const result = await userService.createUserRequest(userDto);

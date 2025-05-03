@@ -1,5 +1,6 @@
-import { BaseEntity, Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { BaseEntity, Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { UserEntity } from './user.entity';
+import { DocumentEntity } from './document.entity';
 
 @Entity({
     name: 'TENANT',
@@ -30,12 +31,10 @@ export class TenantEntity extends BaseEntity {
     })
     status: string;
 
-    // @Column({
-    //     name: 'USER_ID',
-    // })
-    // userId: string;
-
     @OneToOne(() => UserEntity, (user) => user.tenant)
     @JoinColumn({ name: 'USER_ID' })
     user: UserEntity;
+
+    @OneToMany(() => DocumentEntity, (document) => document.tenant)
+    documents: DocumentEntity[];
 }

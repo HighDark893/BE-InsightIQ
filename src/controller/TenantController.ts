@@ -61,10 +61,15 @@ router.get('/:id', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), a
   }
 })
 
-router.get('/getInfo', requireAuthentication, authorize(['TENANT']), getUserInfo, async(req: Request, res: Response) => {
+router.get('/getTenantInfo', requireAuthentication, authorize(['TENANT']), getUserInfo, async(req: Request, res: Response) => {
   try {
-    const tenant = await tenantService.getTenantById(req.body.tenantId);
-    res.status(201).json(tenant);
+    const userInfo = {
+      userId: req.body.userId,
+      tenantId: req.body.tenantId,
+      email: req.body.email,
+      role: req.body.role,
+    }
+    res.status(201).json(userInfo);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch tenant', error });
   }
