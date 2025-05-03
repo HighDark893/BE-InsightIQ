@@ -7,7 +7,9 @@ export class CreateSuperAdmin1745598361086 implements MigrationInterface {
             CREATE TABLE SUPERADMIN (
                  ID BIGINT NOT NULL AUTO_INCREMENT,
                  USERNAME VARCHAR(255) UNIQUE,
-                 PRIMARY KEY (ID)
+                 PRIMARY KEY (ID),
+                 USER_ID BIGINT NOT NULL UNIQUE,
+                 FOREIGN KEY (USER_ID) REFERENCES USER(ID) 
             );
         `);
     }

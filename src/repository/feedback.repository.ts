@@ -1,5 +1,4 @@
 import { dataSource } from '../config/database.config';
-import { FeedbackDto } from '../dto/feedback.dto';
 import { FeedbackEntity } from '../entity/feedback.entity';
 
 export class FeedbackRepository {

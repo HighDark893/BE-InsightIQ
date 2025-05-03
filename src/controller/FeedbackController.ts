@@ -2,11 +2,12 @@ import { Request, Response, Router } from 'express';
 import { FeedbackService } from '../services/FeedbackService';
 import { CreateFeedbackDto } from '../dto/createFeedback.dto';
 import { Rating } from '../constants/rating.enum';
+import { authorize, requireAuthentication } from '../middleware/auth.middleware';
 
 const router = Router();
 const feedbackService = new FeedbackService();
 
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireAuthentication, async (req: Request, res: Response) => {
   try {
     const createFeedbackDto = new CreateFeedbackDto();
 
@@ -21,7 +22,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), async (req: Request, res: Response) => {
   try {
     const feedbacks = await feedbackService.getAll();
     res.json(feedbacks);
@@ -30,7 +31,7 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const feedback = await feedbackService.getById(id);
@@ -41,7 +42,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requireAuthentication, authorize(['TENANT']), async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const success = await feedbackService.delete(id);

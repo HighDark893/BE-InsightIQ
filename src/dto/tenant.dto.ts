@@ -4,4 +4,5 @@ export class TenantDto {
   fullName: string;
   taxId: number;
   status: string;
+  userId: number;
 }

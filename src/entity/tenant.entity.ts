@@ -1,4 +1,5 @@
-import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { BaseEntity, Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { UserEntity } from './user.entity';
 
 @Entity({
     name: 'TENANT',
@@ -28,4 +29,13 @@ export class TenantEntity extends BaseEntity {
         name: 'STATUS',
     })
     status: string;
+
+    // @Column({
+    //     name: 'USER_ID',
+    // })
+    // userId: string;
+
+    @OneToOne(() => UserEntity, (user) => user.tenant)
+    @JoinColumn({ name: 'USER_ID' })
+    user: UserEntity;
 }

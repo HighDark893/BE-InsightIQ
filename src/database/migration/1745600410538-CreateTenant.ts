@@ -10,7 +10,9 @@ export class CreateTenant1745600410538 implements MigrationInterface {
                  FULL_NAME VARCHAR(255) UNIQUE,
                  TAX_ID VARCHAR(255) UNIQUE,
                  STATUS ENUM('APPROVED', 'PENDING', 'DISABLED'),
-                 PRIMARY KEY (ID)
+                 PRIMARY KEY (ID),
+                 USER_ID BIGINT NOT NULL UNIQUE,
+                 FOREIGN KEY (USER_ID) REFERENCES USER(ID)
             );
         `);
     }

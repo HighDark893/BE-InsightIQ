@@ -1,4 +1,6 @@
-import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { BaseEntity, Column, Entity, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { SuperAdminEntity } from './superadmin.entity';
+import { TenantEntity } from './tenant.entity';
 
 @Entity({
   name: 'USER',
@@ -22,4 +24,13 @@ export class UserEntity extends BaseEntity {
     name: 'PASSWORD_HASH',
   })
   passwordHash: string;
+
+  @OneToOne(() => SuperAdminEntity, (admin) => admin.user)
+  superAdmin: SuperAdminEntity;
+
+  @OneToOne(() => TenantEntity, (tenant) => tenant.user)
+  tenant: TenantEntity;
+
+  // @OneToMany(() => UserChatbotEntity, (chatbot) => chatbot.user)
+  // chatbots: UserChatbotEntity[];
 }

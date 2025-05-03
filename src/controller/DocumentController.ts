@@ -1,11 +1,12 @@
 import { Request, Response, Router } from 'express';
 import { DocumentService } from '../services/DocumentService';
 import { CreateDocumentDto } from '../dto/createDocument.dto';
+import { authorize, requireAuthentication } from '../middleware/auth.middleware';
 
 const router = Router();
 const documentService = new DocumentService();
 
-router.post('/', async (req: Request, res: Response) => {
+router.post('/',  requireAuthentication, authorize(['TENANT']), async (req: Request, res: Response) => {
   try {
     const createDocumentDto = new CreateDocumentDto();
 
@@ -20,7 +21,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireAuthentication, authorize(['TENANT']), async (req: Request, res: Response) => {
   try {
     const documents = await documentService.getAll();
     res.status(200).json(documents);
@@ -29,7 +30,7 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/:tenantId', async (req: Request, res: Response) => {
+router.get('/:tenantId', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), async (req: Request, res: Response) => {
   try {
     const tenantId = parseInt(req.params.tenantId);
     const documents = await documentService.getByTenantId(tenantId);
@@ -40,7 +41,7 @@ router.get('/:tenantId', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requireAuthentication, authorize(['TENANT']), async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const success = await documentService.delete(id);

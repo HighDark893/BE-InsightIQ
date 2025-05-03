@@ -1,11 +1,16 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import proxyController from "./controller/ProxyController";
-import { LoggerMiddleware } from './middleware/LoggingMiddleware';
+import { LoggerMiddleware } from './middleware/logging.middleware';
 import { dataSource } from './config/database.config';
-import userController from './controller/user/UserController';
-import superAdminController from './controller/user/SuperAdminController';
-import tenantController from './controller/user/TenantController';
+import userController from './controller/UserController';
+import superAdminController from './controller/SuperAdminController';
+import tenantController from './controller/TenantController';
+import authController from './controller/AuthController';
+import cookieParser from 'cookie-parser';
+import messageController from './controller/MessageController';
+import chatSessionController from './controller/ChatSessionController';
+
 
 dataSource
   .initialize()
@@ -19,11 +24,15 @@ dataSource
 const app = express();
 
 app.use(bodyParser.json());
+app.use(cookieParser());
 app.use(LoggerMiddleware.logRequest)
 app.use(LoggerMiddleware.logResponseTime)
 app.use('/proxy', proxyController);
 app.use('/user', userController);
 app.use('/superadmin', superAdminController);
 app.use('/tenant', tenantController);
+app.use('/auth', authController);
+app.use('/message', messageController);
+app.use('/chat_session', chatSessionController);
 
 export default app;

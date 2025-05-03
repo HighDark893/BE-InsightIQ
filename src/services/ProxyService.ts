@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { Logger } from '../utils/Logger';
 
 export class ProxyService {

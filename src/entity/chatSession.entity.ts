@@ -3,8 +3,6 @@ import {
   Column,
   Entity,
   PrimaryGeneratedColumn,
-  OneToOne,
-  JoinColumn,
   OneToMany,
 } from 'typeorm';
 import { MessageEntity } from './message.entity';
