@@ -9,13 +9,18 @@ const superAdminRepo = dataSource.getRepository(SuperAdminEntity);
 const tenantRepo = dataSource.getRepository(TenantEntity);
 const userChatbotRepo = dataSource.getRepository(UserChatbotEntity);
 
-export const generateJWT = async (user: UserEntity): Promise<string> => {
+export const generateJWT = async (user: UserEntity): Promise<string | null> => {
   let role = 'USER';
 
   let token = '';
-  const superAdmin = await superAdminRepo.findOne({ where: { user: { id: user.id } } });
+  const superAdmin = await superAdminRepo.findOne({
+    where: { user: { id: user.id } },
+  });
   const tenant = await tenantRepo.findOne({ where: { user: { id: user.id } } });
-  const userChatbot = await userChatbotRepo.findOne({ where: { user: { id: user.id } } });
+
+  const userChatbot = await userChatbotRepo.findOne({
+    where: { user: { id: user.id } },
+  });
 
   if (superAdmin) {
     role = 'SUPERADMIN';
@@ -29,9 +34,13 @@ export const generateJWT = async (user: UserEntity): Promise<string> => {
       process.env.JWT_SECRET as string,
       {
         expiresIn: process.env.JWT_EXPIRES_IN || '1d',
-      } as jwt.SignOptions
+      } as jwt.SignOptions,
     );
   } else if (tenant) {
+    if (tenant.status === 'DISABLED') {
+      return null;
+    }
+
     role = 'TENANT';
     token = jwt.sign(
       {
@@ -43,7 +52,7 @@ export const generateJWT = async (user: UserEntity): Promise<string> => {
       process.env.JWT_SECRET as string,
       {
         expiresIn: process.env.JWT_EXPIRES_IN || '1d',
-      } as jwt.SignOptions
+      } as jwt.SignOptions,
     );
   } else if (userChatbot) {
     role = 'USERCHATBOT';
@@ -57,7 +66,7 @@ export const generateJWT = async (user: UserEntity): Promise<string> => {
       process.env.JWT_SECRET as string,
       {
         expiresIn: process.env.JWT_EXPIRES_IN || '1d',
-      } as jwt.SignOptions
+      } as jwt.SignOptions,
     );
   }
 
@@ -68,7 +77,7 @@ export class AuthService {
   public async login(email: string, password: string): Promise<string | null> {
     const user = await UserEntity.findOne({ where: { email: email } });
 
-    if (!user || user.passwordHash != password) {
+    if (!user || user.passwordHash !== password) {
       return null;
     }
     return generateJWT(user);

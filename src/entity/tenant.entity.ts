@@ -1,40 +1,50 @@
-import { BaseEntity, Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  BaseEntity,
+  Column,
+  Entity,
+  JoinColumn,
+  OneToMany,
+  OneToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { UserEntity } from './user.entity';
 import { DocumentEntity } from './document.entity';
 
 @Entity({
-    name: 'TENANT',
+  name: 'TENANT',
 })
 export class TenantEntity extends BaseEntity {
-    @PrimaryGeneratedColumn({
-        name: 'ID',
-    })
-    id: number;
+  @PrimaryGeneratedColumn({
+    name: 'ID',
+  })
+  id: number;
 
-    @Column({
-        name: 'COMPANY_NAME',
-    })
-    companyName: string;
+  @Column({
+    name: 'COMPANY_NAME',
+  })
+  companyName: string;
 
-    @Column({
-        name: 'FULL_NAME',
-    })
-    fullName: string;
+  @Column({
+    name: 'FULL_NAME',
+  })
+  fullName: string;
 
-    @Column({
-        name: 'TAX_ID',
-    })
-    taxId: number;
+  @Column({
+    name: 'TAX_ID',
+  })
+  taxId: number;
 
-    @Column({
-        name: 'STATUS',
-    })
-    status: string;
+  @Column({
+    name: 'STATUS',
+    type: 'enum',
+    enum: ['APRROVED', 'PENDING', 'DISABLED'],
+  })
+  status: string;
 
-    @OneToOne(() => UserEntity, (user) => user.tenant)
-    @JoinColumn({ name: 'USER_ID' })
-    user: UserEntity;
+  @OneToOne(() => UserEntity, (user) => user.tenant)
+  @JoinColumn({ name: 'USER_ID' })
+  user: UserEntity;
 
-    @OneToMany(() => DocumentEntity, (document) => document.tenant)
-    documents: DocumentEntity[];
+  @OneToMany(() => DocumentEntity, (document) => document.tenant)
+  documents: DocumentEntity[];
 }
