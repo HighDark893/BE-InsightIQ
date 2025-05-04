@@ -1,26 +1,34 @@
 // src/socket.ts
-//npm install socket.io
-// import { Server as SocketIOServer, Socket } from 'socket.io';
+// --- IMPORTS ---
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import crypto from 'crypto';
-
-// Import Winston types for explicit typing
 import { Logger as WinstonLogger } from 'winston';
 
-// Import necessary local services, DTOs, and utilities
-import { Logger } from './utils/Logger'; // Adjust path if needed
-import { MessageService } from './services/MessageService'; // [cite: 7]
-import { ChatSessionService } from './services/ChatSessionService'; // [cite: 9]
+// Local imports
+import { Logger } from './utils/Logger';
+import { MessageService } from './services/MessageService';
+import { ChatSessionService } from './services/ChatSessionService';
 import { ChatbotService } from './services/ChatbotService';
-import { CreateMessageDto } from './dto/createMessage.dto'; // [cite: 56]
-import { Sender } from './constants/SenderEnum'; // [cite: 32]
-import { CreateChatSessionDto } from './dto/createChatSession.dto'; // [cite: 50]
+import { CreateMessageDto } from './dto/createMessage.dto';
+import { Sender } from './constants/SenderEnum';
+import { CreateChatSessionDto } from './dto/createChatSession.dto';
+// Import the new DTOs/Interfaces if needed for type checking (optional here)
+import { ProductDataDto } from './dto/ProductData.dto';
+import { ProductComparisonDataDto } from './dto/ProductComparisonData.dto';
+import { ProductPromotionDataDto } from './dto/ProductPromotionData.dto';
+// Define possible response types from ChatbotService
+enum ResponseType {
+  TEXT = 'text',
+  INFO = 'productInfo',
+  COMPARE = 'productComparison',
+  PROMO = 'productPromotion',
+}
 
-// Instantiate services needed within socket logic
-const logger: WinstonLogger = Logger.getInstance(); // [cite: 30] Use explicit type
-const messageService = new MessageService(); // [cite: 7]
-const chatSessionService = new ChatSessionService(); // [cite: 9]
+// Instantiate services
+const logger: WinstonLogger = Logger.getInstance();
+const messageService = new MessageService();
+const chatSessionService = new ChatSessionService();
 const chatbotService = new ChatbotService();
 
 export function setupSocketIO(httpServer: HttpServer): SocketIOServer {
@@ -52,41 +60,40 @@ export function setupSocketIO(httpServer: HttpServer): SocketIOServer {
       }) => {
         logger.info(`Message received from ${socket.id}:`, messageData);
 
-        let currentSessionId: number | null = null; // Declare here to ensure scope
-        let tenantId: number = messageData.tenantId; // Ensure tenantId has scope
+        let currentSessionId: number | null = null;
+        let tenantId: number = messageData.tenantId;
 
         try {
-          // Wrap session handling and message processing
           // --- Input Validation ---
-          if (!messageData.text || !messageData.tenantId) {
+          if (!messageData.text || typeof messageData.tenantId !== 'number') {
+            // Check tenantId type
             logger.warn('Received invalid message data', messageData);
             socket.emit('error', {
-              message: 'Missing message text or tenant ID.',
+              message: 'Missing message text or invalid tenant ID.',
             });
             return;
           }
+          tenantId = messageData.tenantId; // Assign validated tenantId
 
-          // --- Session Handling ---
+          // --- Session Handling (remains the same) ---
           currentSessionId = messageData.sessionId ?? null;
           let sessionToken: string | null = messageData.sessionToken ?? null;
-          tenantId = messageData.tenantId;
 
           // Placeholder: Logic to find session by token
           // if (!currentSessionId && sessionToken) { ... }
 
-          // If no valid session ID exists yet, create one
           if (!currentSessionId) {
             logger.info(
               `No valid session ID found/provided, creating new session for tenant ${tenantId}`,
             );
-            const newSessionDto = new CreateChatSessionDto(); // [cite: 50]
+            const newSessionDto = new CreateChatSessionDto();
             sessionToken = crypto.randomBytes(32).toString('hex');
             newSessionDto.tenantId = tenantId;
             newSessionDto.userChatbotId = 0; // Adjust if needed
             newSessionDto.sessionToken = sessionToken;
 
             const createdSession =
-              await chatSessionService.create(newSessionDto); // [cite: 9]
+              await chatSessionService.create(newSessionDto);
             if (!createdSession || !createdSession.id) {
               throw new Error(
                 'Failed to create a new chat session or retrieve its ID.',
@@ -102,9 +109,7 @@ export function setupSocketIO(httpServer: HttpServer): SocketIOServer {
             });
           }
 
-          // --- CRITICAL CHECK ---
           if (typeof currentSessionId !== 'number') {
-            // Throw error instead of returning, so main catch block handles it
             throw new Error(
               `Failed to obtain a valid numeric session ID for tenant ${tenantId}.`,
             );
@@ -112,68 +117,103 @@ export function setupSocketIO(httpServer: HttpServer): SocketIOServer {
 
           logger.info(`Proceeding with session ID: ${currentSessionId}`);
 
-          // Store session on socket data if not already there
           if (!socket.data.sessionId) {
             socket.data.sessionId = currentSessionId;
             socket.data.tenantId = tenantId;
           }
           // --- End Session Handling ---
 
-          // --- Save User Message ---
-          const userMessage = new CreateMessageDto(); // [cite: 56]
+          // --- Save User Message (remains the same) ---
+          const userMessage = new CreateMessageDto();
           userMessage.chatSessionId = currentSessionId;
           userMessage.content = messageData.text;
-          userMessage.sender = Sender.User; // [cite: 32]
-          await messageService.create(userMessage); // [cite: 7]
+          userMessage.sender = Sender.User;
+          await messageService.create(userMessage);
           logger.info(`User message saved for session ${currentSessionId}`);
 
-          // --- Generate Bot Response (Object with type hint) ---
+          // --- Generate Bot Response (Object with type and potentially structured content) ---
           logger.info(
             `Calling ChatbotService.generateResponse for session ${currentSessionId}`,
           );
-          const botResponse: { type: string; content: string } =
-            await chatbotService.generateResponse(
-              messageData.text,
-              currentSessionId,
-              tenantId,
-            );
+          const botResponse: {
+            type: ResponseType;
+            content:
+              | string
+              | ProductDataDto
+              | ProductComparisonDataDto
+              | ProductPromotionDataDto;
+          } = await chatbotService.generateResponse(
+            messageData.text,
+            currentSessionId,
+            tenantId,
+          );
           logger.info(
             `ChatbotService returned response type '${botResponse.type}' for session ${currentSessionId}`,
           );
 
-          // --- Save Bot Message (Save only the text content) ---
-          const botMessageToSave = new CreateMessageDto(); // [cite: 56]
+          // --- Prepare Bot Message for Saving (Convert structured content to string) ---
+          const botMessageToSave = new CreateMessageDto();
           botMessageToSave.chatSessionId = currentSessionId;
-          botMessageToSave.content = botResponse.content; // Save plain text content
-          botMessageToSave.sender = Sender.ChatBot; // [cite: 32]
-          await messageService.create(botMessageToSave); // [cite: 7]
+          botMessageToSave.sender = Sender.ChatBot;
+
+          let contentForDb: string;
+          if (typeof botResponse.content === 'string') {
+            contentForDb = botResponse.content;
+          } else {
+            // Create a simple text summary or stringify the JSON for the DB record
+            // Option 1: Stringify (can be long)
+            // contentForDb = JSON.stringify(botResponse.content);
+            // Option 2: Simple Summary (better for DB readability)
+            switch (botResponse.type) {
+              case ResponseType.INFO:
+                contentForDb = `[Thông tin sản phẩm: ${(botResponse.content as ProductDataDto).name || 'N/A'}]`;
+                break;
+              case ResponseType.COMPARE:
+                const productNames = (
+                  botResponse.content as ProductComparisonDataDto
+                ).products
+                  .map((p) => p.name)
+                  .join(', ');
+                contentForDb = `[So sánh sản phẩm: ${productNames || 'N/A'}]`;
+                break;
+              case ResponseType.PROMO:
+                contentForDb = `[Thông tin khuyến mãi: ${(botResponse.content as ProductPromotionDataDto).promotionName || (botResponse.content as ProductPromotionDataDto).promotionDescription?.substring(0, 30) + '...' || 'N/A'}]`;
+                break;
+              default:
+                contentForDb = '[Nội dung có cấu trúc không xác định]';
+            }
+            logger.info(`Generated summary for DB: ${contentForDb}`);
+          }
+          botMessageToSave.content = contentForDb; // Save the string representation
+
+          await messageService.create(botMessageToSave);
           logger.info(
-            `Bot message (text content) saved for session ${currentSessionId}`,
+            `Bot message (summary/text) saved for session ${currentSessionId}`,
           );
 
-          // --- Send Structured Hint Response to Client ---
+          // --- Send Structured Response (including object content) to Client ---
           const messageToSend = {
             sender: 'bot',
-            type: botResponse.type,
-            content: botResponse.content,
+            type: botResponse.type, // Send the original type ('productInfo', 'text', etc.)
+            content: botResponse.content, // Send the original content (string OR object)
             timestamp: new Date().toISOString(),
+            // Add message ID from saved bot message if needed by frontend for feedback
+            // id: savedBotMessage.id // Assuming messageService.create returns the saved DTO with ID
           };
           io.to(socket.id).emit('newMessage', messageToSend);
           logger.info(
-            `Sent hinted response ('${botResponse.type}') to socket ${socket.id} for session ${currentSessionId}`,
+            `Sent response (type: '${botResponse.type}') to socket ${socket.id} for session ${currentSessionId}`,
           );
         } catch (error) {
-          // Catch errors during session handling, message saving, or generation
           logger.error(
             `Error handling message for socket ${socket.id}, session ${currentSessionId ?? 'UNKNOWN'}:`,
             error,
           );
-          // Send a generic text error back to the client
           io.to(socket.id).emit('newMessage', {
             sender: 'bot',
-            type: 'text',
+            type: ResponseType.TEXT, // Send TEXT type for errors
             content:
-              'I apologize, but I encountered an error processing your request. Please try again or contact support if the issue persists.',
+              'Tôi xin lỗi, đã có lỗi xảy ra khi xử lý yêu cầu của bạn. Vui lòng thử lại hoặc liên hệ hỗ trợ nếu vấn đề vẫn tiếp diễn.',
             timestamp: new Date().toISOString(),
           });
         }
