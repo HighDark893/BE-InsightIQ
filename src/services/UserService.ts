@@ -3,22 +3,18 @@ import { Logger } from '../utils/Logger';
 import { UserEntity } from '../entity/user.entity';
 import { UserDto } from '../dto/user.dto';
 
-
 export class UserService {
   private readonly userRepository = new UserRepository();
 
   private readonly logger = Logger.getInstance();
 
-  constructor() {
+  constructor() {}
 
-  }
-
-  async createUserRequest(userDto: UserDto){
-
+  async createUserRequest(userDto: UserDto) {
     const userEntity = new UserEntity();
     userEntity.email = userDto.email;
     userEntity.phoneNumber = userDto.phoneNumber;
-    userEntity.passwordHash = userDto.passwordHash;
+    userEntity.passwordHash = userDto.password;
     const createdUserEntity = await this.userRepository.createUser(userEntity);
 
     userDto.id = createdUserEntity.id;
@@ -26,25 +22,25 @@ export class UserService {
     return userDto;
   }
 
-  async updateUserPassword(userDto: UserDto){
+  async updateUserPassword(userDto: UserDto) {
     const userEntity = await this.userRepository.getUserById(userDto.id);
-    if(!userEntity){
+    if (!userEntity) {
       return {
         success: false,
-        message: "User not found. Password update failed."
-      }
+        message: 'User not found. Password update failed.',
+      };
     }
-    userEntity.passwordHash = userDto.passwordHash;
+    userEntity.passwordHash = userDto.password;
     await this.userRepository.updateUser(userEntity);
     return {
       success: true,
-      message: "Password updated successfully."
+      message: 'Password updated successfully.',
     };
   }
 
-  async getUserById(id: number){
+  async getUserById(id: number) {
     const userEntity = await this.userRepository.getUserById(id);
-    if(!userEntity){
+    if (!userEntity) {
       return null;
     }
 
@@ -57,21 +53,18 @@ export class UserService {
     return userDto;
   }
 
-  async deleteUser(userDto: UserDto){
-    const userEntity = await this.userRepository.getUserById(userDto.id)
-    if(!userEntity){
+  async deleteUser(userDto: UserDto) {
+    const userEntity = await this.userRepository.getUserById(userDto.id);
+    if (!userEntity) {
       return {
         success: false,
-        message: "User not found. Delete failed."
-      }
+        message: 'User not found. Delete failed.',
+      };
     }
     await this.userRepository.deleteUser(userEntity.id);
     return {
       success: true,
-      message: "User deleted successfully."
+      message: 'User deleted successfully.',
     };
   }
-
-
-
 }
