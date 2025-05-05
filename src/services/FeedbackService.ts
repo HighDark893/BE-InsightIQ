@@ -137,6 +137,28 @@ export class FeedbackService {
     return feedbacks;
   }
 
+  public async countAllRatings() {
+    const allFeedbacks = await this.feedbackRepository.findAll();
+
+    let positiveRatingCount = 0;
+    let negativeRatingCount = 0;
+
+    for (const feedback of allFeedbacks) {
+      if (feedback.rating === 'Positive') {
+        positiveRatingCount++;
+      } else if (feedback.rating === 'Negative') {
+        negativeRatingCount++;
+      }
+    }
+
+    const ratingCount = new RatingCountDto();
+
+    ratingCount.positive = positiveRatingCount;
+    ratingCount.negative = negativeRatingCount;
+
+    return ratingCount;
+  }
+
   private mapFeedbackEntityToDto(entity: FeedbackEntity): FeedbackDto {
     const feedbackDto = new FeedbackDto();
 
