@@ -79,8 +79,19 @@ router.delete(
   },
 );
 
+router.get('/summary/countRatings', async (req: Request, res: Response) => {
+  try {
+    const result = await feedbackService.countAllRatings();
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Failed to count all feedbacks', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 router.get(
-  '/summary/:tenantId',
+  '/summary/countRatings/:tenantId',
   requireAuthentication,
   authorize(['SUPERADMIN', 'TENANT']),
   async (req: Request, res: Response) => {
