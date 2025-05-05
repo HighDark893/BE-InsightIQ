@@ -33,7 +33,7 @@ router.post(
 router.get(
   '/',
   requireAuthentication,
-  authorize(['SUPERADMIN', 'TENANT']),
+  authorize(['SUPERADMIN']),
   async (req: Request, res: Response) => {
     try {
       const feedbacks = await feedbackService.getAll();
