@@ -53,6 +53,19 @@ export class UserService {
     return userDto;
   }
 
+  async getUserPasswordById(id: number) {
+    const userEntity = await this.userRepository.getUserById(id);
+    if (!userEntity) {
+      return null;
+    }
+
+    const userDto = new UserDto();
+
+    userDto.password = userEntity.passwordHash;
+
+    return userDto;
+  }
+
   async deleteUser(userDto: UserDto) {
     const userEntity = await this.userRepository.getUserById(userDto.id);
     if (!userEntity) {
