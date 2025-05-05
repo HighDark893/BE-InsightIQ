@@ -1,6 +1,6 @@
 import express from 'express';
 import bodyParser from 'body-parser';
-import proxyController from "./controller/ProxyController";
+import proxyController from './controller/ProxyController';
 import { LoggerMiddleware } from './middleware/logging.middleware';
 import { dataSource } from './config/database.config';
 import userController from './controller/UserController';
@@ -14,22 +14,21 @@ import userChatbotController from './controller/UserChatbotController';
 import feedbackController from './controller/FeedbackController';
 import documentController from './controller/DocumentController';
 
-
 dataSource
   .initialize()
   .then(() => {
-    console.log("Data Source has been initialized!")
+    console.log('Data Source has been initialized!');
   })
   .catch((err) => {
-    console.error("Error during Data Source initialization:", err)
-  })
+    console.error('Error during Data Source initialization:', err);
+  });
 
 const app = express();
 
 app.use(bodyParser.json());
 app.use(cookieParser());
-app.use(LoggerMiddleware.logRequest)
-app.use(LoggerMiddleware.logResponseTime)
+app.use(LoggerMiddleware.logRequest);
+app.use(LoggerMiddleware.logResponseTime);
 app.use('/proxy', proxyController);
 app.use('/user', userController);
 app.use('/superadmin', superAdminController);
@@ -39,6 +38,6 @@ app.use('/auth', authController);
 app.use('/message', messageController);
 app.use('/chat_session', chatSessionController);
 app.use('/feedback', feedbackController);
-app.use('/document', documentController);
+app.use('/documents', documentController);
 
 export default app;
