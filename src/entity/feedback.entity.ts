@@ -23,7 +23,7 @@ export class FeedbackEntity extends BaseEntity {
     type: 'enum',
     enum: Rating,
   })
-  rating: Rating;
+  rating: string;
 
   @Column({
     name: 'comment',
