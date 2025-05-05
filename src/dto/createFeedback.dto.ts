@@ -1,4 +1,4 @@
-import { Rating } from '../constants/RatingEnum';
+import { Rating } from '../constants/rating.enum';
 
 export class CreateFeedbackDto {
   rating: Rating;

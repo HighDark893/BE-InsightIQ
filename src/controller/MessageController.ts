@@ -1,12 +1,13 @@
 import { Request, Response, Router } from 'express';
 import { MessageService } from '../services/MessageService';
 import { CreateMessageDto } from '../dto/createMessage.dto';
-import { Sender } from '../constants/SenderEnum';
+import { Sender } from '../constants/sender.enum';
+import { requireAuthentication, authorize } from '../middleware/auth.middleware';
 
 const router = Router();
 const messageService = new MessageService();
 
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireAuthentication, authorize(['TENANT', 'USERCHATBOT']), async (req: Request, res: Response) => {
   try {
     const createMessageDto = new CreateMessageDto();
 
@@ -21,7 +22,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireAuthentication, authorize(['TENANT', 'USERCHATBOT']), async (req: Request, res: Response) => {
   try {
     const messages = await messageService.getAll();
     res.status(200).json(messages);
@@ -30,7 +31,7 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/:chatSessionId', async (req: Request, res: Response) => {
+router.get('/:chatSessionId', requireAuthentication, authorize(['SUPERADMIN', 'TENANT', 'USERCHATBOT']), async (req: Request, res: Response) => {
   try {
     const chatSessionId = parseInt(req.params.chatSessionId);
     const messageDto = await messageService.getByChatSessionId(chatSessionId);
@@ -41,7 +42,7 @@ router.get('/:chatSessionId', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const success = await messageService.delete(id);

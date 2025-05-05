@@ -1,11 +1,10 @@
 import {
   BaseEntity,
   Column,
-  Entity,
+  Entity, JoinColumn, ManyToOne,
   PrimaryGeneratedColumn,
-  ManyToOne,
-  JoinColumn,
 } from 'typeorm';
+import { TenantEntity } from './tenant.entity';
 
 @Entity({
   name: 'document',
@@ -30,6 +29,12 @@ export class DocumentEntity extends BaseEntity {
     name: 'tenant_id',
   })
   tenantId: number;
+
+  @ManyToOne(() => TenantEntity, (tenant) => tenant.documents)
+  @JoinColumn({
+    name: 'tenant_id',
+  })
+  tenant: TenantEntity;
 
   @Column({
     name: 'created_at',

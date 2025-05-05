@@ -11,7 +11,7 @@ import { MessageService } from './services/MessageService';
 import { ChatSessionService } from './services/ChatSessionService';
 import { ChatbotService } from './services/ChatbotService';
 import { CreateMessageDto } from './dto/createMessage.dto';
-import { Sender } from './constants/SenderEnum';
+import { Sender } from './constants/sender.enum';
 import { CreateChatSessionDto } from './dto/createChatSession.dto';
 // Import the new DTOs/Interfaces if needed for type checking (optional here)
 import { ProductDataDto } from './dto/ProductData.dto';

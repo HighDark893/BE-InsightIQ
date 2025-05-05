@@ -1,4 +1,4 @@
-import { Sender } from '../constants/SenderEnum';
+import { Sender } from '../constants/sender.enum';
 import { MessageEntity } from '../entity/message.entity';
 
 export class MessageDto {

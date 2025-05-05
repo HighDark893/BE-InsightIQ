@@ -6,6 +6,8 @@ import { DeleteDocumentService } from '../services/document/DeleteDocumentServic
 import { DocumentDto } from '../dto/document.dto';
 import multer from 'multer';
 import { DocumentService } from '../services/document/DocumentService'; // Import DocumentService
+import { CreateDocumentDto } from '../dto/createDocument.dto';
+import { authorize, requireAuthentication } from '../middleware/auth.middleware';
 
 const router = Router();
 const uploadDocumentService = new UploadDocumentService();
@@ -66,7 +68,6 @@ router.post(
         res.status(400).json({ message: 'Invalid Tenant ID format.' });
         return;
       }
-
       console.info(
         `[DocController] Received file: ${req.file.originalname}, tenantId: ${tenantId}, validFrom: ${validFrom}, validUntil: ${validUntil}`,
       );
@@ -96,6 +97,7 @@ router.post(
     }
   },
 );
+
 // --- Route GET ---
 router.get(
   '/',

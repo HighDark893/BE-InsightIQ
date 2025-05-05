@@ -1,12 +1,13 @@
 import { Request, Response, Router } from 'express';
 import { FeedbackService } from '../services/FeedbackService';
 import { CreateFeedbackDto } from '../dto/createFeedback.dto';
-import { Rating } from '../constants/RatingEnum';
+import { Rating } from '../constants/rating.enum';
+import { authorize, requireAuthentication } from '../middleware/auth.middleware';
 
 const router = Router();
 const feedbackService = new FeedbackService();
 
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireAuthentication, authorize(['USERCHATBOT']), async (req: Request, res: Response) => {
   try {
     const createFeedbackDto = new CreateFeedbackDto();
 
@@ -21,7 +22,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), async (req: Request, res: Response) => {
   try {
     const feedbacks = await feedbackService.getAll();
     res.json(feedbacks);
@@ -30,18 +31,18 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', requireAuthentication, authorize(['SUPERADMIN', 'TENANT', 'USERCHATBOT']), async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const feedback = await feedbackService.getById(id);
 
-    res.json(feedback);
+    res.status(200).json(feedback);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch feedback', error });
   }
 });
 
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const success = await feedbackService.delete(id);
@@ -54,5 +55,16 @@ router.delete('/:id', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to delete feedback', error });
   }
 });
+
+router.get('/summary/:tenantId', requireAuthentication, authorize(['SUPERADMIN', 'TENANT']), async (req: Request, res: Response) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId);
+    const ratingCount = await feedbackService.countRatingByTenantId(tenantId);
+
+    res.status(200).json(ratingCount);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch ratings amount', error });
+  }
+})
 
 export default router;

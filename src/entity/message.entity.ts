@@ -4,10 +4,11 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   ManyToOne,
-  JoinColumn,
+  JoinColumn, OneToOne,
 } from 'typeorm';
-import { Sender } from '../constants/SenderEnum';
+import { Sender } from '../constants/sender.enum';
 import { ChatSessionEntity } from './chatSession.entity';
+import { FeedbackEntity } from './feedback.entity';
 
 @Entity({
   name: 'message',
@@ -47,4 +48,7 @@ export class MessageEntity extends BaseEntity {
     name: 'chat_session_id',
   })
   chatSession: ChatSessionEntity;
+
+  @OneToOne(() => FeedbackEntity, (feedback) => feedback.message)
+  feedback: FeedbackEntity;
 }

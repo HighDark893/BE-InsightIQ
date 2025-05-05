@@ -1,5 +1,5 @@
 // src/services/document/DocumentIngestionService.ts
-//npm install pdf-parse
+//npm install @langchain/openai @langchain/community @langchain/core @supabase/supabase-js winston langchain
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
