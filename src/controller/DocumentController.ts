@@ -7,7 +7,10 @@ import { DocumentDto } from '../dto/document.dto';
 import multer from 'multer';
 import { DocumentService } from '../services/document/DocumentService'; // Import DocumentService
 import { CreateDocumentDto } from '../dto/createDocument.dto';
-import { authorize, requireAuthentication } from '../middleware/auth.middleware';
+import {
+  authorize,
+  requireAuthentication,
+} from '../middleware/auth.middleware';
 
 const router = Router();
 const uploadDocumentService = new UploadDocumentService();
@@ -20,6 +23,8 @@ const upload = multer({ storage: storage });
 // --- Route POST ---
 router.post(
   '/upload',
+  requireAuthentication,
+  authorize(['TENANT']), //ensures only tenants can upload
   upload.single('file'), // Handles the file part
   async (req: Request, res: Response): Promise<void> => {
     try {
@@ -31,11 +36,31 @@ router.post(
       }
 
       // --- Body Data Validation ---
-      const { tenantId: tenantIdString, validFrom, validUntil } = req.body;
+      const { validFrom, validUntil } = req.body;
+      // Add // @ts-ignore above the next line if you encounter type errors for req.user
+      // @ts-ignore
+      const tenantIdFromAuth = req.user?.tenantId; // Get tenantId from the decoded JWT payload
 
-      if (!tenantIdString) {
-        console.warn('[DocController] Upload request missing tenantId.');
-        res.status(400).json({ message: 'Tenant ID is required.' });
+      // --- Add Validation for tenantId from Auth ---
+      if (tenantIdFromAuth === undefined || tenantIdFromAuth === null) {
+        console.warn(
+          '[DocController] Upload request missing tenantId in authenticated user context.',
+        );
+        // Use 401 Unauthorized or 403 Forbidden as appropriate
+        res
+          .status(401)
+          .json({ message: 'Unauthorized or tenant ID not found in token.' });
+        return;
+      }
+      // --- End Validation ---
+
+      // Ensure tenantId is a number before passing to the service
+      const tenantId = parseInt(tenantIdFromAuth, 10);
+      if (isNaN(tenantId)) {
+        console.warn(
+          `[DocController] Invalid Tenant ID format from token: ${tenantIdFromAuth}`,
+        );
+        res.status(400).json({ message: 'Invalid Tenant ID format in token.' });
         return;
       }
       // --- Date Validation (Basic) ---
@@ -59,18 +84,6 @@ router.post(
           .json({ message: 'Invalid date format. Please use YYYY-MM-DD.' });
         return;
       }
-
-      const tenantId = parseInt(tenantIdString, 10);
-      if (isNaN(tenantId)) {
-        console.warn(
-          `[DocController] Invalid Tenant ID format: ${tenantIdString}`,
-        );
-        res.status(400).json({ message: 'Invalid Tenant ID format.' });
-        return;
-      }
-      console.info(
-        `[DocController] Received file: ${req.file.originalname}, tenantId: ${tenantId}, validFrom: ${validFrom}, validUntil: ${validUntil}`,
-      );
 
       // --- Call Service with Date Info ---
       const savedDocument: DocumentDto =

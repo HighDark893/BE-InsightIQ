@@ -60,7 +60,7 @@ export class UploadDocumentService {
       '_',
     );
     const uniqueFileNameForPath = `${Date.now()}-${sanitizedOriginalName}`;
-    const supabasePath = `tenant_${tenantId}/${uniqueFileNameForPath}`; // Example path structure
+    const supabasePath = `tenant_${uniqueFileNameForPath}`; // Example path structure
 
     let publicUrl = '';
     let savedDocumentEntity: DocumentEntity | null = null;
