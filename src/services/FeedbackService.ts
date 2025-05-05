@@ -63,11 +63,12 @@ export class FeedbackService {
   public async countRatingByTenantId(tenantId: number) {
     const tenantEntity = await this.tenantRepository.getTenantById(tenantId);
 
-    if(!tenantEntity){
+    if (!tenantEntity) {
       return null;
     }
 
-    const chatSessions = await this.chatSessionRepository.findByTenantId(tenantId);
+    const chatSessions =
+      await this.chatSessionRepository.findByTenantId(tenantId);
 
     let positiveRatingCount = 0;
     let negativeRatingCount = 0;
@@ -78,8 +79,8 @@ export class FeedbackService {
       for (const m of messages) {
         const feedback = await this.feedbackRepository.findByMessageId(m.id);
 
-        if(!feedback){
-          break;
+        if (!feedback) {
+          continue;
         }
 
         if (feedback.rating === 'Positive') {
@@ -96,6 +97,44 @@ export class FeedbackService {
     ratingCount.negative = negativeRatingCount;
 
     return ratingCount;
+  }
+
+  public async getFeedbacksByTenantId(tenantId: number) {
+    const tenantEntity = await this.tenantRepository.getTenantById(tenantId);
+
+    if (!tenantEntity) {
+      return null;
+    }
+
+    const feedbacks: FeedbackDto[] = [];
+
+    const chatSessions =
+      await this.chatSessionRepository.findByTenantId(tenantId);
+
+    for (const cs of chatSessions) {
+      const messages = await this.messagesRepository.findByChatSessionId(cs.id);
+
+      for (const m of messages) {
+        const feedback = await this.feedbackRepository.findByMessageId(m.id);
+
+        if (!feedback) {
+          continue;
+        }
+
+        const feedbackDto = new FeedbackDto();
+
+        feedbackDto.id = feedback.id;
+        feedbackDto.rating = feedback.rating;
+        feedbackDto.comment = feedback.comment;
+        feedbackDto.messageId = feedback.messageId;
+        feedbackDto.createdAt =
+          feedback.createdAt.toTimeString() + feedback.createdAt.toDateString();
+
+        feedbacks.push(feedbackDto);
+      }
+    }
+
+    return feedbacks;
   }
 
   private mapFeedbackEntityToDto(entity: FeedbackEntity): FeedbackDto {
