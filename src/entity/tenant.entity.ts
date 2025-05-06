@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { UserEntity } from './user.entity';
 import { DocumentEntity } from './document.entity';
+import { UserChatbotEntity } from './userChatbot.entity';
 
 @Entity({
   name: 'TENANT',
@@ -44,6 +45,9 @@ export class TenantEntity extends BaseEntity {
   @OneToOne(() => UserEntity, (user) => user.tenant)
   @JoinColumn({ name: 'USER_ID' })
   user: UserEntity;
+
+  @OneToMany(() => UserChatbotEntity, (userChatbot) => userChatbot.tenant)
+  userChatbots: UserChatbotEntity[];
 
   @OneToMany(() => DocumentEntity, (document) => document.tenant)
   documents: DocumentEntity[];

@@ -28,6 +28,29 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/user_chatbot/login', async (req: Request, res: Response) => {
+  try {
+    const { name, phoneNumber } = req.body;
+    const token = await authService.userChatbotLogin(name, phoneNumber);
+
+    if (!token) {
+      res
+        .status(400)
+        .json({ message: "Something's wrong with user's email or password" });
+    } else {
+      res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: false, // Set true in production (HTTPS)
+        sameSite: 'strict',
+      });
+
+      res.status(200).json({ token });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to login', error });
+  }
+});
+
 router.post(
   '/logout',
   requireAuthentication,

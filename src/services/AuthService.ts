@@ -18,10 +18,6 @@ export const generateJWT = async (user: UserEntity): Promise<string | null> => {
   });
   const tenant = await tenantRepo.findOne({ where: { user: { id: user.id } } });
 
-  const userChatbot = await userChatbotRepo.findOne({
-    where: { user: { id: user.id } },
-  });
-
   if (superAdmin) {
     role = 'SUPERADMIN';
     token = jwt.sign(
@@ -54,21 +50,29 @@ export const generateJWT = async (user: UserEntity): Promise<string | null> => {
         expiresIn: process.env.JWT_EXPIRES_IN || '1d',
       } as jwt.SignOptions,
     );
-  } else if (userChatbot) {
-    role = 'USERCHATBOT';
-    token = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        role,
-        userChatbotId: userChatbot.id,
-      },
-      process.env.JWT_SECRET as string,
-      {
-        expiresIn: process.env.JWT_EXPIRES_IN || '1d',
-      } as jwt.SignOptions,
-    );
   }
+
+  return token;
+};
+
+export const generateUserChatbotJWT = async (
+  userChatbot: UserChatbotEntity,
+): Promise<string | null> => {
+  const role = 'USERCHATBOT';
+
+  const token = jwt.sign(
+    {
+      userChatbotId: userChatbot.id,
+      name: userChatbot.name,
+      phoneNumber: userChatbot.phoneNumber,
+      tenantId: userChatbot.tenantId,
+      role,
+    },
+    process.env.JWT_SECRET as string,
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || '1d',
+    } as jwt.SignOptions,
+  );
 
   return token;
 };
@@ -81,5 +85,20 @@ export class AuthService {
       return null;
     }
     return generateJWT(user);
+  }
+
+  public async userChatbotLogin(
+    name: string,
+    phoneNumber: string,
+  ): Promise<string | null> {
+    const userChatbot = await userChatbotRepo.findOne({
+      where: { name: name, phoneNumber: phoneNumber },
+    });
+
+    if (!userChatbot) {
+      return null;
+    }
+
+    return generateUserChatbotJWT(userChatbot);
   }
 }

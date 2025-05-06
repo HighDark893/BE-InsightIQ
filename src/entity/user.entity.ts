@@ -1,4 +1,10 @@
-import { BaseEntity, Column, Entity, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  BaseEntity,
+  Column,
+  Entity,
+  OneToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { SuperAdminEntity } from './superadmin.entity';
 import { TenantEntity } from './tenant.entity';
 
@@ -30,7 +36,4 @@ export class UserEntity extends BaseEntity {
 
   @OneToOne(() => TenantEntity, (tenant) => tenant.user)
   tenant: TenantEntity;
-
-  // @OneToMany(() => UserChatbotEntity, (chatbot) => chatbot.user)
-  // chatbots: UserChatbotEntity[];
 }

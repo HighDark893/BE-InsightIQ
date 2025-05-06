@@ -16,17 +16,22 @@ export class UserChatbotEntity {
   })
   id: number;
 
-  @ManyToOne(() => TenantEntity, { nullable: false })
+  @Column({
+    name: 'TENANT_ID',
+  })
+  tenantId: number;
+
+  @ManyToOne(() => TenantEntity, (tenant) => tenant.userChatbots)
   @JoinColumn({ name: 'TENANT_ID' })
   tenant: TenantEntity;
-
-  @OneToOne(() => UserEntity, { nullable: false })
-  @JoinColumn({ name: 'USER_ID' })
-  user: UserEntity;
 
   @Column({
     name: 'NAME',
   })
   name: string;
 
+  @Column({
+    name: 'PHONE_NUMBER',
+  })
+  phoneNumber: string;
 }
