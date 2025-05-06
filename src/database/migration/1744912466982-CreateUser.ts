@@ -6,8 +6,8 @@ export class CreateUser1744912466982 implements MigrationInterface {
             CREATE TABLE USER (
                ID BIGINT NOT NULL AUTO_INCREMENT,
                EMAIL VARCHAR(255) UNIQUE,
-               PHONE_NUMBER VARCHAR(255) UNIQUE,
-               PASSWORD_HASH VARCHAR(255) UNIQUE,
+               PHONE_NUMBER VARCHAR(255),
+               PASSWORD_HASH VARCHAR(255),
                PRIMARY KEY (ID)
             );
         `);
