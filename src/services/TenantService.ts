@@ -28,9 +28,11 @@ export class TenantService {
 
     tenantEntity.user = userEntity;
 
-    await this.tenantRepository.createTenant(tenantEntity);
+    const createdTenantEntity =
+      await this.tenantRepository.createTenant(tenantEntity);
 
     tenantDto.userId = userEntity.id;
+    tenantDto.id = createdTenantEntity.id;
 
     return tenantDto;
   }

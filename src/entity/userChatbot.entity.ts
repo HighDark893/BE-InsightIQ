@@ -16,7 +16,12 @@ export class UserChatbotEntity {
   })
   id: number;
 
-  @ManyToOne(() => TenantEntity, { nullable: false })
+  @Column({
+    name: 'TENANT_ID',
+  })
+  tenantId: number;
+
+  @ManyToOne(() => TenantEntity, (tenant) => tenant.userChatbots)
   @JoinColumn({ name: 'TENANT_ID' })
   tenant: TenantEntity;
 
