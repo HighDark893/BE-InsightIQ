@@ -9,7 +9,7 @@ const superAdminRepo = dataSource.getRepository(SuperAdminEntity);
 const tenantRepo = dataSource.getRepository(TenantEntity);
 const userChatbotRepo = dataSource.getRepository(UserChatbotEntity);
 
-export const generateJWT = async (user: UserEntity): Promise<string | null> => {
+export const generateJWT = async (user: UserEntity) => {
   let role = 'USER';
 
   let token = '';
@@ -52,7 +52,7 @@ export const generateJWT = async (user: UserEntity): Promise<string | null> => {
     );
   }
 
-  return token;
+  return { token: token, role: role };
 };
 
 export const generateUserChatbotJWT = async (
@@ -78,7 +78,7 @@ export const generateUserChatbotJWT = async (
 };
 
 export class AuthService {
-  public async login(email: string, password: string): Promise<string | null> {
+  public async login(email: string, password: string) {
     const user = await UserEntity.findOne({ where: { email: email } });
 
     if (!user || user.passwordHash !== password) {
