@@ -33,7 +33,7 @@ export const generateJWT = async (user: UserEntity) => {
       } as jwt.SignOptions,
     );
   } else if (tenant) {
-    if (tenant.status === 'DISABLED') {
+    if (tenant.status !== 'APPROVED') {
       return null;
     }
 
