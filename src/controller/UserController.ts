@@ -37,6 +37,21 @@ router.post(
   },
 );
 
+router.post(
+  '/update',
+  requireAuthentication,
+  async (req: Request, res: Response) => {
+    try {
+      const userDto: UserDto = req.body;
+      const result = await userService.updateUser(userDto);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('Error updating user', error);
+      res.status(500).json({ error: 'internal server error' });
+    }
+  },
+);
+
 router.delete(
   '/delete',
   requireAuthentication,
