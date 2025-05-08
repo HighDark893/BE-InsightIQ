@@ -23,8 +23,8 @@ router.post('/login', async (req: Request, res: Response) => {
       } else {
         res.cookie('auth_token', token, {
           httpOnly: true,
-          secure: false, // Set true in production (HTTPS)
-          sameSite: 'strict',
+          // secure: false, // Set true in production (HTTPS)
+          // sameSite: 'none',
         });
 
         res.status(200).json({ role });
