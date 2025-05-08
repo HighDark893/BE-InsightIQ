@@ -13,6 +13,8 @@ import chatSessionController from './controller/ChatSessionController';
 import userChatbotController from './controller/UserChatbotController';
 import feedbackController from './controller/FeedbackController';
 import documentController from './controller/DocumentController';
+import cors from 'cors';
+import corsConfig from './config/cors.config';
 
 dataSource
   .initialize()
@@ -24,6 +26,8 @@ dataSource
   });
 
 const app = express();
+
+app.use(cors(corsConfig));
 
 app.use(bodyParser.json());
 app.use(cookieParser());
