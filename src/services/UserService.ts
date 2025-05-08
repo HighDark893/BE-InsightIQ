@@ -38,6 +38,24 @@ export class UserService {
     };
   }
 
+  async updateUser(userDto: UserDto) {
+    const userEntity = await this.userRepository.getUserById(userDto.id);
+    if (!userEntity) {
+      return {
+        success: false,
+        message: 'User not found. User update failed.',
+      };
+    }
+    userEntity.email = userDto.email;
+    userEntity.phoneNumber = userDto.phoneNumber;
+    userEntity.passwordHash = userDto.password;
+    await this.userRepository.updateUser(userEntity);
+    return {
+      success: true,
+      message: 'User updated successfully.',
+    };
+  }
+
   async getUserById(id: number) {
     const userEntity = await this.userRepository.getUserById(id);
     if (!userEntity) {
