@@ -42,6 +42,11 @@ export class TenantEntity extends BaseEntity {
   })
   status: string;
 
+  @Column({
+    name: 'USER_ID',
+  })
+  userId: number;
+
   @OneToOne(() => UserEntity, (user) => user.tenant)
   @JoinColumn({ name: 'USER_ID' })
   user: UserEntity;
