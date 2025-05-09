@@ -23,13 +23,15 @@ router.post('/create', async (req: Request, res: Response) => {
   }
 });
 
-router.post(
-  '/update',
+router.put(
+  '/:id',
   requireAuthentication,
   authorize(['SUPERADMIN', 'TENANT']),
   async (req: Request, res: Response) => {
     try {
       const tenantDto: TenantDto = req.body;
+      tenantDto.id = parseInt(req.params.id);
+
       const result = await tenantService.updateTenant(tenantDto);
       res.status(201).json(result);
     } catch (error) {
