@@ -38,7 +38,7 @@ export class TenantEntity extends BaseEntity {
   @Column({
     name: 'STATUS',
     type: 'enum',
-    enum: ['APRROVED', 'PENDING', 'DISABLED'],
+    enum: ['APRROVED', 'PENDING', 'REJECTED', 'DISABLED'],
   })
   status: string;
 
