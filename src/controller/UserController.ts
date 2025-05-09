@@ -57,11 +57,13 @@ router.put(
 );
 
 router.delete(
-  '/delete',
+  '/:id',
   requireAuthentication,
   async (req: Request, res: Response) => {
     try {
       const userDto: UserDto = req.body;
+      userDto.id = parseInt(req.params.id);
+
       const result = await userService.deleteUser(userDto);
       res.status(201).json(result);
     } catch (error) {

@@ -23,6 +23,16 @@ router.post('/create', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const result = await userChatbotService.getAllUserChatbot();
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching user chatbot', error);
+    res.status(500).json({ error: 'internal server error' });
+  }
+});
+
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
@@ -35,12 +45,14 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 router.delete(
-  '/delete',
+  '/:id',
   requireAuthentication,
   authorize(['SUPERADMIN', 'TENANT']),
   async (req: Request, res: Response) => {
     try {
       const userChatbotDto: UserChatbotDto = req.body;
+      userChatbotDto.id = parseInt(req.params.id);
+
       const result = await userChatbotService.deleteUserChatbot(userChatbotDto);
       res.status(201).json(result);
     } catch (error) {

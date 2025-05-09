@@ -42,12 +42,14 @@ router.put(
 );
 
 router.delete(
-  '/delete',
+  '/:id',
   requireAuthentication,
   authorize(['SUPERADMIN']),
   async (req: Request, res: Response) => {
     try {
       const tenantDto: TenantDto = req.body;
+      tenantDto.id = parseInt(req.params.id);
+
       const result = await tenantService.deleteTenant(tenantDto);
       res.status(201).json(result);
     } catch (error) {

@@ -37,6 +37,10 @@ export class UserChatbotService {
     return userChatbotDto;
   }
 
+  async getAllUserChatbot() {
+    return await this.userChatbotRepository.getAllUserChatbots();
+  }
+
   async getUserChatbotById(id: number) {
     const userChatbotEntity =
       await this.userChatbotRepository.getUserChatbotById(id);

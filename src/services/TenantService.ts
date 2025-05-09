@@ -38,7 +38,9 @@ export class TenantService {
   }
 
   async updateTenant(tenantDto: TenantDto) {
-    const tenantEntity = await this.getTenantById(tenantDto.id);
+    const tenantEntity = await this.tenantRepository.getTenantById(
+      tenantDto.id,
+    );
     if (!tenantEntity) {
       return {
         success: false,
@@ -63,7 +65,9 @@ export class TenantService {
   }
 
   async deleteTenant(tenantDto: TenantDto) {
-    const tenantEntity = await this.getTenantById(tenantDto.id);
+    const tenantEntity = await this.tenantRepository.getTenantById(
+      tenantDto.id,
+    );
     if (!tenantEntity) {
       return {
         success: false,
