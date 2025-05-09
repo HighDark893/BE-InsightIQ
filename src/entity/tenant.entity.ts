@@ -33,7 +33,7 @@ export class TenantEntity extends BaseEntity {
   @Column({
     name: 'TAX_ID',
   })
-  taxId: number;
+  taxId: string;
 
   @Column({
     name: 'STATUS',

@@ -62,7 +62,7 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const result = await tenantService.getAllTenants();
-      res.status(201).json(req.body);
+      res.status(201).json(result);
     } catch (error) {
       console.error('Error updating tenant', error);
       res.status(500).json({ error: 'internal server error' });
