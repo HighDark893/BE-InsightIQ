@@ -22,12 +22,14 @@ router.post('/create', async (req: Request, res: Response) => {
   }
 });
 
-router.post(
-  '/updatepassword',
+router.put(
+  '/updatepassword/:id',
   requireAuthentication,
   async (req: Request, res: Response) => {
     try {
       const userDto: UserDto = req.body;
+      userDto.id = parseInt(req.params.id);
+
       const result = await userService.updateUserPassword(userDto);
       res.status(201).json(result);
     } catch (error) {
@@ -37,12 +39,14 @@ router.post(
   },
 );
 
-router.post(
-  '/update',
+router.put(
+  '/:id',
   requireAuthentication,
   async (req: Request, res: Response) => {
     try {
       const userDto: UserDto = req.body;
+      userDto.id = parseInt(req.params.id);
+
       const result = await userService.updateUser(userDto);
       res.status(201).json(result);
     } catch (error) {

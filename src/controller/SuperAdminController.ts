@@ -24,13 +24,15 @@ router.post('/create', async (req: Request, res: Response) => {
   }
 });
 
-router.post(
-  '/update',
+router.put(
+  '/:id',
   requireAuthentication,
   authorize(['SUPERADMIN']),
   async (req: Request, res: Response) => {
     try {
       const superAdminDto: SuperAdminDto = req.body;
+      superAdminDto.id = parseInt(req.params.id);
+
       const result = await superAdminService.updateSuperAdmin(superAdminDto);
       res.status(201).json(result);
     } catch (error) {
