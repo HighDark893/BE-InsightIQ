@@ -4,7 +4,6 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import crypto from 'crypto';
 import { Logger as WinstonLogger } from 'winston';
-
 // Local imports
 import { Logger } from './utils/Logger';
 import { MessageService } from './services/MessageService';
@@ -17,6 +16,8 @@ import { CreateChatSessionDto } from './dto/createChatSession.dto';
 import { ProductDataDto } from './dto/ProductData.dto';
 import { ProductComparisonDataDto } from './dto/ProductComparisonData.dto';
 import { ProductPromotionDataDto } from './dto/ProductPromotionData.dto';
+import { MessageDto } from './dto/message.dto';
+
 // Define possible response types from ChatbotService
 enum ResponseType {
   TEXT = 'text',
@@ -186,23 +187,26 @@ export function setupSocketIO(httpServer: HttpServer): SocketIOServer {
           }
           botMessageToSave.content = contentForDb; // Save the string representation
 
-          await messageService.create(botMessageToSave);
+          // Save the bot message and get the DTO with the ID
+          const savedBotMessageDto: MessageDto =
+            await messageService.create(botMessageToSave); // This returns MessageDto
           logger.info(
-            `Bot message (summary/text) saved for session ${currentSessionId}`,
+            `Bot message (summary/text) saved for session ${currentSessionId} with ID ${savedBotMessageDto.id}`,
           );
 
           // --- Send Structured Response (including object content) to Client ---
           const messageToSend = {
-            sender: 'bot',
-            type: botResponse.type, // Send the original type ('productInfo', 'text', etc.)
-            content: botResponse.content, // Send the original content (string OR object)
+            id: savedBotMessageDto.id, // <--- USE THE DB ID HERE (This will be our dbMessageId on FE)
+            sender: 'bot' as const, // Use 'as const' for literal type
+            type: botResponse.type,
+            content: botResponse.content,
             timestamp: new Date().toISOString(),
-            // Add message ID from saved bot message if needed by frontend for feedback
-            // id: savedBotMessage.id // Assuming messageService.create returns the saved DTO with ID
+            liked: false, // Initial state
+            disliked: false, // Initial state
           };
           io.to(socket.id).emit('newMessage', messageToSend);
           logger.info(
-            `Sent response (type: '${botResponse.type}') to socket ${socket.id} for session ${currentSessionId}`,
+            `Sent response (type: '${botResponse.type}', dbId: ${savedBotMessageDto.id}) to socket ${socket.id} for session ${currentSessionId}`,
           );
         } catch (error) {
           logger.error(
