@@ -15,8 +15,9 @@ export class MessageDto {
     messageDto.sender = entity.sender;
     messageDto.content = entity.content;
     messageDto.chatSessionId = entity.chatSessionId;
-    messageDto.createdAt =
-      entity.createdAt.toTimeString() + entity.createdAt.toDateString();
+    // messageDto.createdAt =
+    //   entity.createdAt.toTimeString() + entity.createdAt.toDateString();
+    messageDto.createdAt = entity.createdAt.toISOString();
 
     return messageDto;
   }
