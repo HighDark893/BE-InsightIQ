@@ -4,6 +4,7 @@ import { MessageEntity } from '../entity/message.entity';
 export class CreateMessageDto {
   sender: Sender;
   content: string;
+  type: string;
   chatSessionId: number;
 
   public static fromEntity(entity: MessageEntity) {
@@ -11,6 +12,7 @@ export class CreateMessageDto {
 
     messageDto.sender = entity.sender;
     messageDto.content = entity.content;
+    messageDto.type = entity.type;
     messageDto.chatSessionId = entity.chatSessionId;
 
     return messageDto;

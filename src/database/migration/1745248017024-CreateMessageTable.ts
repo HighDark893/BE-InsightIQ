@@ -7,6 +7,7 @@ export class CreateMessageTable1745248017024 implements MigrationInterface {
                 id BIGINT NOT NULL AUTO_INCREMENT,
                 sender ENUM('Chatbot', 'User') NOT NULL,
                 content TEXT NOT NULL,
+                type TEXT,
                 chat_session_id BIGINT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY(id),
