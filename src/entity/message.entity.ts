@@ -4,7 +4,8 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   ManyToOne,
-  JoinColumn, OneToOne,
+  JoinColumn,
+  OneToOne,
 } from 'typeorm';
 import { Sender } from '../constants/sender.enum';
 import { ChatSessionEntity } from './chatSession.entity';
@@ -30,6 +31,11 @@ export class MessageEntity extends BaseEntity {
     name: 'content',
   })
   content: string;
+
+  @Column({
+    name: 'type',
+  })
+  type: string;
 
   @Column({
     name: 'chat_session_id',

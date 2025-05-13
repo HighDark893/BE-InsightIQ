@@ -5,6 +5,7 @@ export class MessageDto {
   id: number;
   sender: Sender;
   content: string;
+  type: string;
   chatSessionId: number;
   createdAt: string;
 
@@ -14,6 +15,7 @@ export class MessageDto {
     messageDto.id = entity.id;
     messageDto.sender = entity.sender;
     messageDto.content = entity.content;
+    messageDto.type = entity.type;
     messageDto.chatSessionId = entity.chatSessionId;
     // messageDto.createdAt =
     //   entity.createdAt.toTimeString() + entity.createdAt.toDateString();

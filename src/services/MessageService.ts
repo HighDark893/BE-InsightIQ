@@ -13,6 +13,7 @@ export class MessageService {
 
     message.sender = createMessageDto.sender;
     message.content = createMessageDto.content;
+    message.type = createMessageDto.type;
     message.chatSessionId = createMessageDto.chatSessionId;
 
     return await this.messageRepository.save(message);
