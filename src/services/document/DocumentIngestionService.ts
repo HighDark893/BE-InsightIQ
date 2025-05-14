@@ -128,8 +128,8 @@ export class DocumentIngestionService {
 
       // 2. Split Document(s) into Chunks
       const textSplitter = new RecursiveCharacterTextSplitter({
-        chunkSize: 1000,
-        chunkOverlap: 200,
+        chunkSize: 1500,
+        chunkOverlap: 300,
       });
       const chunks = await textSplitter.splitDocuments(docs);
       this.logger.info(

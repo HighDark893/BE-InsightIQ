@@ -105,7 +105,9 @@ const productDataSchema = z
     comment: z
       .string()
       .optional()
-      .describe('Optional concluding sentence or comment from the bot.'),
+      .describe(
+        'Optional concluding insights or a helpful summary from the bot. This could include a brief mention of key selling points, suitability for specific user needs if inferable from context, or a polite invitation for further questions. Aim for a helpful and somewhat detailed closing statement rather than a generic one, perhaps 2-3 sentences if appropriate.',
+      ),
   })
   .describe('Structured information about a single product.');
 
@@ -139,11 +141,11 @@ const productComparisonSchema = z
       .describe(
         'An array containing details of at least two products being compared.',
       ),
-    conclusion: z
+    conclusion: z // This was 'comment' conceptually, but the field name is 'conclusion'
       .string()
       .optional()
       .describe(
-        'Optional concluding sentence or summary from the bot after the comparison.',
+        "Optional concluding insights or a nuanced summary from the bot after presenting the comparison. This should not just declare a 'winner', but rather help the user understand which product might better suit different priorities or needs based on the compared data. It can also suggest next steps, other factors for consideration, or highlight key trade-offs. Aim to provide a thoughtful, multi-sentence summary that adds genuine value to the user's decision-making process.",
       ),
   })
   .describe('Structured comparison between two or more products.');
@@ -207,11 +209,14 @@ const productPromotionSchema = z
     comment: z
       .string()
       .optional()
-      .describe('Câu bình luận/kết luận tùy chọn của bot.'), // Kept optional
+      .describe(
+        'Câu bình luận/kết luận sâu sắc tùy chọn của bot, có thể dài vài câu. Nội dung này nên làm nổi bật giá trị thực sự của chương trình khuyến mãi, có thể gợi ý cách tận dụng tối đa ưu đãi (ví dụ: kết hợp với sản phẩm khác nếu có lợi), đề cập đến tính cấp thiết một cách thuyết phục (ví dụ: "Đây là cơ hội hiếm có, số lượng quà tặng có hạn"), hoặc cung cấp thêm ngữ cảnh về lợi ích đặc biệt của khuyến mãi này so với các ưu đãi thông thường. Mục tiêu là cung cấp một nhận xét hữu ích, mang tính khuyến khích và cung cấp thêm góc nhìn cho người dùng.',
+      ),
   })
   .describe(
     'Structured information about a specific product promotion, matching frontend display needs.',
   );
+
 // --- Response Type Enum ---
 enum ResponseType {
   TEXT = 'text',
@@ -324,7 +329,7 @@ export class ChatbotService {
       // --- Retriever (remains the same) ---
       const retriever = this.vectorStore.asRetriever({
         searchType: 'similarity',
-        k: 5,
+        k: 10,
         filter: (rpc) =>
           rpc
             .eq('metadata->>tenant_id', tenantId.toString())
@@ -372,7 +377,7 @@ export class ChatbotService {
         },
       ];
 
-      // --- Main QA Prompt (remains the same) ---
+      // --- Main QA Prompt (remains the same - using previously updated version) ---
       const qaSystemPrompt = `Bạn là InsightIQ, một trợ lý AI thân thiện... Mục tiêu của bạn là giúp đỡ khách hàng bằng cách trả lời các câu hỏi của họ một cách chính xác, CHỈ dựa trên thông tin được cung cấp trong ngữ cảnh (context) dưới đây, vốn đã được lọc để chỉ chứa thông tin phù hợp với ngày hôm nay ({currentUtcDateString} UTC).
 
       Sử dụng lịch sử trò chuyện (chat history) để có thêm ngữ cảnh hội thoại nếu cần. Bạn PHẢI trả lời bằng tiếng Việt.
@@ -381,14 +386,18 @@ export class ChatbotService {
       1.  **Thông tin sản phẩm (INFO):** Nếu người dùng hỏi chi tiết về MỘT sản phẩm cụ thể. Nếu vậy, HÃY SỬ DỤNG function 'output_product_info' để trả về dữ liệu có cấu trúc.
       2.  **So sánh sản phẩm (COMPARE):** Nếu người dùng yêu cầu so sánh HAI HOẶC NHIỀU sản phẩm. Nếu vậy, HÃY SỬ DỤNG function 'output_product_comparison' để trả về dữ liệu có cấu trúc.
       3.  **Thông tin khuyến mãi (PROMO):** Nếu người dùng hỏi về một chương trình giảm giá, ưu đãi cụ thể. Nếu vậy, HÃY SỬ DỤNG function 'output_product_promotion' để trả về dữ liệu có cấu trúc.
-      4.  **Văn bản thông thường (TEXT):** Cho tất cả các trường hợp khác (trò chuyện chung, làm rõ, chào hỏi, không tìm thấy thông tin). KHÔNG sử dụng function nào, chỉ cần trả lời bằng văn bản tiếng Việt thông thường.
+      4.  **Văn bản thông thường (TEXT):** Sử dụng cho các trường hợp sau:
+          * Trò chuyện chung, làm rõ, chào hỏi.
+          * Khi không tìm thấy thông tin trong ngữ cảnh.
+          * **Khi câu hỏi quá phức tạp để trả lời bằng một loại dữ liệu có cấu trúc duy nhất (INFO, COMPARE, PROMO), hoặc yêu cầu nhiều loại thông tin (ví dụ: chi tiết sản phẩm VÀ so sánh VÀ khuyến mãi trong cùng một câu hỏi) cùng một lúc.** Trong những trường hợp này, hãy cung cấp một câu trả lời văn bản rõ ràng, sạch sẽ, dễ hiểu và có thể giải thích ngắn gọn rằng yêu cầu sẽ được trả lời dưới dạng văn bản do tính chất phức hợp của nó.
+          * KHÔNG sử dụng function nào, chỉ cần trả lời bằng văn bản tiếng Việt thông thường.
 
       **Nguyên tắc trả lời:**
-      * **Chỉ dùng ngữ cảnh:** KHÔNG bịa đặt thông tin. Toàn bộ câu trả lời PHẢI dựa trên ngữ cảnh và lịch sử trò chuyện.
+      * **Chỉ dùng ngữ cảnh:** KHÔNG BỊA ĐẶT THÔNG TIN. Toàn bộ câu trả lời PHẢI dựa trên ngữ cảnh và lịch sử trò chuyện.
       * **Không tìm thấy thông tin:** Nếu ngữ cảnh (đã lọc) không chứa câu trả lời, hãy nói rõ là không tìm thấy thông tin *cho ngày hôm nay* trong tài liệu được cung cấp và đặt câu hỏi làm rõ. Trả lời bằng văn bản thông thường (TEXT).
       * **Đề cập tính hợp lệ:** Khi đề cập đến thông tin nhạy cảm về thời gian (ví dụ: khuyến mãi) được tìm thấy trong ngữ cảnh, hãy nêu rõ ngày hiệu lực của nó nếu có.
       * **Giọng điệu:** Thân thiện, trò chuyện, rõ ràng, tiếng Việt.
-      * **Đối với structured output (INFO, COMPARE, PROMO):** Điền đầy đủ các trường trong schema của function tương ứng dựa trên ngữ cảnh. Nếu thông tin không có, hãy bỏ qua trường đó (để là undefined hoặc null trong JSON). Cố gắng bao gồm cả 'intro' và 'comment' nếu phù hợp để làm cho phản hồi tự nhiên hơn.
+      * **Đối với structured output (INFO, COMPARE, PROMO):** Điền đầy đủ các trường trong schema của function tương ứng dựa trên ngữ cảnh. Nếu thông tin không có, hãy bỏ qua trường đó (để là undefined hoặc null trong JSON). Cố gắng bao gồm cả 'intro' và 'comment' (hoặc 'conclusion' cho COMPARE) nếu phù hợp để làm cho phản hồi tự nhiên hơn. Các trường 'comment'/'conclusion' này nên sâu sắc và chi tiết hơn là một câu chung chung.
       * **Riêng với PROMO:** Cố gắng điền các trường sau cho 'output_product_promotion; nếu tìm thấy trong ngữ cảnh:
                 * 'productName': Tên sản phẩm chính đang được khuyến mãi.
                 * 'promotionDescription': Mô tả chi tiết khuyến mãi là gì.
@@ -399,7 +408,7 @@ export class ChatbotService {
                 * 'validUntil': Thời hạn (chuỗi, ví dụ '31/12/2025' hoặc 'đến hết tháng').
                 * 'conditions': Điều kiện áp dụng (chuỗi).
                 * 'productImageUrl': Link ảnh sản phẩm (chuỗi).
-            * Cố gắng bao gồm cả 'intro' và 'comment' nếu phù hợp để làm cho phản hồi tự nhiên hơn.
+            * Cố gắng bao gồm cả 'intro' và 'comment' nếu phù hợp để làm cho phản hồi tự nhiên hơn, với 'comment' sâu sắc như đã mô tả.
 
 
       Ngữ cảnh (Context - đã lọc theo ngày {currentUtcDateString}):
