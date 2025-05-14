@@ -156,53 +156,36 @@ export function setupSocketIO(httpServer: HttpServer): SocketIOServer {
           const botMessageToSave = new CreateMessageDto();
           botMessageToSave.chatSessionId = currentSessionId;
           botMessageToSave.sender = Sender.ChatBot;
+          botMessageToSave.type = botResponse.type;
 
           let contentForDb: string;
           if (typeof botResponse.content === 'string') {
-            contentForDb = botResponse.content;
+            contentForDb = botResponse.content; // If content is already a string, use it directly
           } else {
-            // Create a simple text summary or stringify the JSON for the DB record
-            // Option 1: Stringify (can be long)
-            // contentForDb = JSON.stringify(botResponse.content);
-            // Option 2: Simple Summary (better for DB readability)
-            switch (botResponse.type) {
-              case ResponseType.INFO:
-                contentForDb = `[Thông tin sản phẩm: ${(botResponse.content as ProductDataDto).name || 'N/A'}]`;
-                break;
-              case ResponseType.COMPARE:
-                const productNames = (
-                  botResponse.content as ProductComparisonDataDto
-                ).products
-                  .map((p) => p.name)
-                  .join(', ');
-                contentForDb = `[So sánh sản phẩm: ${productNames || 'N/A'}]`;
-                break;
-              case ResponseType.PROMO:
-                contentForDb = `[Thông tin khuyến mãi: ${(botResponse.content as ProductPromotionDataDto).promotionName || (botResponse.content as ProductPromotionDataDto).promotionDescription?.substring(0, 30) + '...' || 'N/A'}]`;
-                break;
-              default:
-                contentForDb = '[Nội dung có cấu trúc không xác định]';
-            }
-            logger.info(`Generated summary for DB: ${contentForDb}`);
+            // If content is an object (structured message), stringify the entire object
+            contentForDb = JSON.stringify(botResponse.content); // <--- MODIFIED LINE
+            logger.info(
+              `Structured content stringified for DB for session ${currentSessionId}`,
+            );
           }
-          botMessageToSave.content = contentForDb; // Save the string representation
+          botMessageToSave.content = contentForDb; // Save the full stringified content (or plain text)
 
           // Save the bot message and get the DTO with the ID
           const savedBotMessageDto: MessageDto =
-            await messageService.create(botMessageToSave); // This returns MessageDto
+            await messageService.create(botMessageToSave);
           logger.info(
-            `Bot message (summary/text) saved for session ${currentSessionId} with ID ${savedBotMessageDto.id}`,
+            `Bot message (type: ${botMessageToSave.type}, full content/text) saved for session ${currentSessionId} with ID ${savedBotMessageDto.id}`,
           );
 
           // --- Send Structured Response (including object content) to Client ---
           const messageToSend = {
-            id: savedBotMessageDto.id, // <--- USE THE DB ID HERE (This will be our dbMessageId on FE)
-            sender: 'bot' as const, // Use 'as const' for literal type
-            type: botResponse.type,
-            content: botResponse.content,
+            id: savedBotMessageDto.id, // Use the DB ID
+            sender: 'bot' as const,
+            type: botResponse.type, // Send the original type
+            content: botResponse.content, // Send the original structured content or text
             timestamp: new Date().toISOString(),
-            liked: false, // Initial state
-            disliked: false, // Initial state
+            liked: false,
+            disliked: false,
           };
           io.to(socket.id).emit('newMessage', messageToSend);
           logger.info(
