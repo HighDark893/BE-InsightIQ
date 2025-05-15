@@ -6,9 +6,9 @@
 //   credentials: true,
 //   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 //   allowedHeaders: [
-//     'Content-type',
+//     'Content-Type',
 //     'Authorization',
-//     'X-Requested-with',
+//     'X-Requested-With',
 //     'Accept',
 //     'Origin',
 //     'Access-Control-Allow-Origin',
