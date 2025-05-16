@@ -1,5 +1,3 @@
-import axios from 'axios';
-import { env } from '../config/app.config';
 import { Logger } from '../utils/Logger';
 
 export class ProxyService {
@@ -11,7 +9,8 @@ export class ProxyService {
     }
 
     public async proxyRequest(body: any): Promise<any> {
-        const { method } = body;
+
+        const proxy = body;
 
        return body;
     }
